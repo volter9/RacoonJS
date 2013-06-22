@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF8" />
+		<title>Asteroids - RacoonJS - Canvas Game Engine</title>
+		<style>
+			body {
+				padding: 0px;
+				margin: 0px;
+			}
+			
+			#container {
+				width: 640px; 
+				height: 480px; 
+				margin: 20px auto;
+			}
+		</style>
+		<script type="text/javascript" src="racoon.js"></script>
+		<script type="text/javascript" src="asteroids.js"></script>
+		<script type="text/javascript">
+			var gameScene;
+			
+			if (localStorage.mouse == undefined) {
+				localStorage.mouse = 0;
+			}
+			
+			var options = {
+				mouse: localStorage.mouse,
+			};
+			RJ.load(function (game) {
+				game.init({
+					canvas: "c",
+					size: size(640,480),
+					rate: 45
+				});
+				
+				if (localStorage.hScore == undefined) {
+					localStorage.hScore = 0;
+				}
+				if (localStorage.hWave == undefined) {
+					localStorage.hWave = 1;
+				}
+				
+				var win = game.winSize();
+				var generateAsteroids = function (number,varience,target) {
+					for (var i = 0; i < number; i++) {
+						var rad = 50 + (Math.round(Math.random()*varience)*10);
+						var angle = (i/number) * (Math.PI*2) + (Math.PI/2);
+						var vel = Vector.angleToVec(angle);
+						var pos = size2vec(win).div(2).sub(vec2(rad/2,rad/2)).sub(vel.clone().scalar(win.w/1.75));
+						
+						target.addChild(new Asteroid({
+							nameless: true,
+							pos: pos,
+							size:size(rad,rad),
+							velocity: vel,
+							acc: 2
+						}));
+					}
+				}
+				var createGameScene = function (self) {
+					rec = new Rectangle({
+						pos: vecNull(),
+						size: win,
+						fillColor: "#000",
+						name: "TransRect"
+					});
+					rec.opacity = 0;
+					var stars = new SpaceSky({
+						name: "StarSky",
+						pos: size2vec(win).scalar(0.5),
+						size: win,
+						anchor: vec2(0.5,0.5),
+						update: function () {
+							this.angle += Math.PI/10000
+						}
+					});
+					var bullets = new GameObject({
+						name: "Bullets",
+						pos: vecNull(),
+						size: win,
+					});
+					var asteroids = new GameObject({
+						name: "Asteroids",
+						pos: vecNull(),
+						size: win,
+						enter: function () {
+							generateAsteroids(wave,4,this);
+						}
+					});
+					var crushes = new GameObject({
+						name: "Crushes",
+						pos: vecNull(),
+						size: win
+					});
+					var shuttle = new Shuttle({
+						name: "Shuttle",
+						pos: size2vec(win).div(2),
+						mouse: options.mouse,
+						
+					});
+					var hpBar = new HealthBar({
+						name: "hpBar",
+						pos: vec2(5,5),
+						total: shuttle.total,
+						target: shuttle,
+					});
+					var lifeBar = new LifeIndicator({
+						name: "lfBar",
+						pos: vec2(win.w-5,5),
+						anchor: vec2(1,0),
+						total: 3
+					});
+					var Score = new ScoreCounter({
+						anchor: vec2(0.5,0),
+						pos: vec2(win.w/2,5),
+						name: "scoreBar",
+					});
+					Wave = new Text({
+						text: "WAVE "+wave,
+						name: "Wave",
+						pos: size2vec(win).div(2),
+						scale: size(50,50),
+						fillColor: "#fff",
+						font: "Courier",
+						fontSize: 20,
+						anchor: vec2(0.5,0.5),
+						enter: function () {
+							this.addAction(new ScaleTo(1,size(1,1)));
+							this.addAction(new AlphaTo(2,0));
+						
+							setTimeout(function () {
+								Wave.deleteAllActions();
+								Wave.removeFromParent();
+								Wave.opacity = 1;
+								Wave.scale = size(50,50)
+							
+							},2000)
+						}
+					});
+				
+					var gradient = radialGradient(new Circle(vec2(540,380),40),new Circle(vec2(win.w/2,win.h/2),380),
+												  [0,"#000",0.2,"#222",0.3,"#555556",0.4,"rgba(0,0,0,0)"]);
+				
+					var SkyBox = new Rectangle({
+						pos: vec2(0,0),
+						size: win,
+						fillColor: gradient,
+						nameless: true,
+					});
+				
+					self.addChild(stars);
+					self.addChild(SkyBox);
+					self.addChild(bullets);
+					self.addChild(asteroids);
+					self.addChild(crushes);
+					self.addChild(shuttle);
+					self.addChild(hpBar);
+					self.addChild(lifeBar);
+					self.addChild(Score);
+					self.addChild(Wave);
+					self.addChild(rec);
+				}
+				
+				var Wave, rec;
+				var wave = 1;
+				var gameScene = new Scene({
+					name: "GameScene",
+					init: function (self) {
+						
+					},
+					enter: function () {
+						createGameScene(this);
+					},
+					exit: function () {
+						this.removeAllChildren();
+					},
+					update: function () {
+						var shuttle = RJ.get("Shuttle");
+						var asteroids = RJ.get("Asteroids");
+						if (shuttle != undefined && shuttle.lfBar != undefined && shuttle.lfBar.current < 0) {
+							shuttle.removeFromParent();
+							
+							if (localStorage.hScore < RJ.get("scoreBar").getScore()) {
+								localStorage.hScore = RJ.get("scoreBar").getScore();
+							}
+							
+							if (localStorage.hWave < wave) {
+								localStorage.hWave = wave;
+							}
+							
+							Wave.text = "GAME OVER";
+							wave = 1;
+							RJ.get("GameScene").addChild(Wave);
+							setTimeout(function () {
+								RJ.get("TransRect").addAction(new AlphaTo(1,1));
+								setTimeout(function () {
+									RJ.get("GameScene").removeFromParent();
+									game.addChild(scoreScene);
+								},1000);
+							},2000);
+							
+							asteroids.pause();
+						}
+						
+						if (asteroids.children.length <= 0) {
+							wave++;
+							
+							Wave.text = "WAVE "+wave;
+							RJ.get("GameScene").addChild(Wave);
+							
+							if (wave % 3 == 0) {
+								RJ.get("Shuttle").bullCount++;
+							}
+							
+							generateAsteroids(wave,4+Math.floor(wave/4),asteroids);
+						}
+					},
+				});
+				
+				var menuScene = new Scene({
+					name: "MenuScene",
+					init: function () {
+					
+					},
+					enter: function () {
+						var button = new Button({
+							target: function () {
+								menuScene.removeFromParent();
+								game.addChild(gameScene)
+							},
+							label: "Start!",
+							pos: size2vec(win).div(2),
+							anchor: vec2(0.5,0.5),
+							size: size(100,30),
+							name: "StartButton"
+						});
+						
+						var Asteroid = new Text({
+							text: "Asteroids",
+							name: "Title",
+							font: "Trebuchet MS",
+							fontSize: 48,
+							pos: vec2(win.w/2,win.h/8),
+							anchor: vec2(0.5,0),
+							fillColor: "#fff"
+						});
+						
+						var sky = new SpaceSky({
+							name: "MenuStarSky",
+							pos: size2vec(win).scalar(0.5),
+							size: win,
+							anchor: vec2(0.5,0.5),
+							update: function () {
+								this.angle += Math.PI/10000
+							}
+						});
+						
+						var forMouse = "Controls for Mouse:\nMouse Move - turn left or right, Space - boost, Click - fire";
+						var forKeyboard = "Controls for Keyboard: \nArrow up - boost, Arrow left,right - turn left,right , Space - fire";
+						var tips = new Text({
+							text: (options.mouse == 1) ? forMouse : forKeyboard,
+							name: "Tips",
+							font: "Trebuchet MS",
+							fontSize: 11,
+							align: "center",
+							pos: size2vec(win).div(2).add(vec2(0,100)),
+							anchor: vec2(0,0),
+							fillColor: "#fff",
+							alpha: 0.75
+						});
+						
+						var mouseToKeyboard = new Button({
+							target: function () {
+								options.mouse = (options.mouse == 0) ? 1 : 0;
+								if (options.mouse == 1) {
+									this.label = "Mouse >";
+									tips.text = forMouse;
+								}
+								else {
+									this.label = "< Keyboard";
+									tips.text = forKeyboard;
+								}
+								localStorage.mouse = options.mouse;
+							},
+							label: (localStorage.mouse == 1) ? "Mouse >" : "< Keyboard",
+							pos: size2vec(win).div(2).add(vec2(0,75)),
+							anchor: vec2(0.5,0.5),
+							size: size(100,30),
+							name: "SwitchControlButton"
+						});
+						
+						menuScene.addChild(sky);
+						menuScene.addChild(tips);
+						menuScene.addChild(button);
+						menuScene.addChild(Asteroid);
+						menuScene.addChild(mouseToKeyboard);
+					}
+				});
+				var scoreScene = new Scene({
+					name: "ScoreScene",
+					init: function (self) {
+						
+					},
+ 					enter: function () {
+ 						var loose = new Text({
+ 							text: "You loose!",
+							font: "Trebuchet MS",
+							fontSize: 32,
+							pos: vec2(win.w/2,win.h/8),
+							anchor: vec2(0.5,0.5),
+							fillColor: "#fff",
+							nameless: true,
+ 						});
+ 						
+						var higSco = new Text({
+							text: "High Score: "+localStorage.hScore+", high wave: "+localStorage.hWave,
+							font: "Trebuchet MS",
+							fontSize: 16,
+							pos: vec2(win.w/2,win.h/4),
+							anchor: vec2(0.5,0.5),
+							fillColor: "#fff",
+							nameless: true,
+						});
+						
+						var sky = new SpaceSky({
+							name: "MenuStarSky",
+							pos: size2vec(win).scalar(0.5),
+							size: win,
+							anchor: vec2(0.5,0.5),
+							update: function () {
+								this.angle += Math.PI/10000
+							}
+						});
+						
+						var toMenuButton = new Button({
+							target: function () {
+								scoreScene.removeFromParent();
+								game.addChild(menuScene);
+							},
+							label: "Back to Menu!",
+							pos: size2vec(win).div(2).sub(vec2(100,0)),
+							anchor: vec2(0.5,0.5),
+							size: size(100,30),
+							name: "ToMenuButton"
+						});
+						
+						var RestartButton = new Button({
+							target: function () {
+								scoreScene.removeFromParent();
+								game.addChild(gameScene);
+							},
+							label: "Again!",
+							pos: size2vec(win).div(2).add(vec2(100,0)),
+							anchor: vec2(0.5,0.5),
+							size: size(100,30),
+							name: "RestartButton"
+						}); 
+						
+						scoreScene.addChild(sky);
+						scoreScene.addChild(higSco);
+						scoreScene.addChild(loose);
+						scoreScene.addChild(toMenuButton);
+						scoreScene.addChild(RestartButton);
+					}
+				});
+								
+				//RJ.turnOnDebug();
+				RJ.showFPS();
+				
+				game.addChild(menuScene);
+				//game.setBackground(gradient);
+			});
+		</script>
+	</head>
+	<body>
+		<div id="container">
+			<canvas id="c">
+				<p>Your browser doesn't support HTML5 Canvas technology. 
+				   Please update your browser or download fresh version of your other browser.</p>
+			</canvas>
+		</div>
+	</body>
+</html>
