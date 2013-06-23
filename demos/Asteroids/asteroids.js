@@ -303,17 +303,7 @@ function Shuttle(obj) {
 				if (this.bullCount == 1) {
 					var angle = self.angle - Math.PI/2;
 					
-					var bullet = new Bullet({
-						direction: vec2(cos(angle),sin(angle)),
-						fillColor: "#0ff",
-						pos: self.pos.clone(),
-						anchor: vec2(0.5,0.5),
-						size: size(2,2),
-						nameless: true,
-						angle: self.angle
-					});
-		
-					bullet.container.addChild(bullet);
+					RJ.get("Bullets").addBullet(self.pos.clone(),vec2(cos(angle),sin(angle)));
 				}
 				else if(this.bullCount > 1) {
 					for (var i = 0; i < this.bullCount; i++) {
@@ -325,17 +315,7 @@ function Shuttle(obj) {
 					
 						var direction = vec2(cos(startAngle+(diff*i)),sin(startAngle+(diff*i)));
 					
-						var bullet = new Bullet({
-							direction: direction,
-							fillColor: "#0ff",
-							pos: self.pos.clone(),
-							anchor: vec2(0.5,0.5),
-							size: size(2,2),
-							nameless: true,
-							angle: self.angle
-						});
-			
-						bullet.container.addChild(bullet);
+						RJ.get("Bullets").addBullet(self.pos.clone(),direction);
 					}
 				}
 			}
@@ -477,6 +457,57 @@ function Crush(obj) {
 	
 	Game.inherit(this,Crush,GameObject,obj);
 }
+function Bullets(obj) {
+	this.bullets = [];
+	this.addBullet = function (vec,dir) {
+		var index = this.bullets.length;
+		
+		this.bullets[index] = {
+			pos: vec,
+			dir: dir.scalar(15),
+			time: 0,
+			dur: 1,
+			ind: index
+		}
+	}
+	
+	this.removeBullet = function (ind) {
+		this.bullets[ind] = null;
+		this.bullets.splice(ind,1);
+		
+		for (var i = 0; i < this.bullets.length; i++) {
+			this.bullets[i].ind = i;
+		}
+	}
+	
+	this.render = function (ctx) {
+		if (this.bullets.length > 0) {
+			for (var i = 0; i < this.bullets.length; i++) {
+				var bullet = this.bullets[i];
+				
+				ctx.fillStyle = "#0ff";
+				ctx.fillRect(bullet.pos.x-1,bullet.pos.y-1,2,2);
+			}
+		}
+	}
+	
+	this.update = function (dt) {
+		if (this.bullets.length > 0) {
+			for (var i = 0; i < this.bullets.length; i++) {
+				var bullet = this.bullets[i];
+				
+				bullet.time += 1/RJ.rate;
+				bullet.pos.add(bullet.dir);
+				
+				if (bullet.time >= bullet.dur) {
+					this.removeBullet(bullet.ind);
+				}
+			}
+		}
+	}
+	
+	Game.inherit(this,Bullets,GameObject,obj);
+}
 function Bullet(obj) {
 	this.direction = obj.direction ? obj.direction.scalar(15) : vec2(1,0);
 	this.container = RJ.get("Bullets");
@@ -553,7 +584,7 @@ function Asteroid(obj) {
 		this.poly.angle += Math.PI/360;
 		
 		if (this.bullets == undefined) {
-			this.bullets = RJ.get("Bullets").children;
+			this.bullets = RJ.get("Bullets").bullets;
 		}
 		
 		var pos = this.pos.clone().add(this.velocity);
@@ -603,7 +634,7 @@ function Asteroid(obj) {
 						RJ.get("scoreBar").addScore(this.type * 100);
 					}
 			
-					bullet.removeFromParent();
+					RJ.get("Bullets").removeBullet(bullet.ind);
 					RJ.get("scoreBar").addScore(this.type * 5);
 					
 					break;

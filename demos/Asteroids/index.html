@@ -75,7 +75,7 @@
 							this.angle += Math.PI/10000
 						}
 					});
-					var bullets = new GameObject({
+					var bullets = new Bullets({
 						name: "Bullets",
 						pos: vecNull(),
 						size: win,
@@ -213,7 +213,7 @@
 								RJ.get("Shuttle").bullCount++;
 							}
 							
-							generateAsteroids(wave,4+Math.floor(wave/4),asteroids);
+							generateAsteroids((wave < 20) ? wave : 20,4+((wave >= 20) ? Math.floor((wave-20)/5) : 0),asteroids);
 						}
 					},
 				});
