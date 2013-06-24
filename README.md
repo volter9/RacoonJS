@@ -10,4 +10,4 @@ demos and games.
 I added one demo for this game engine: Asteroids.
 
 You can find in demos/Asteroids
-Or you can find it [here](volter9.github.io/RacoonJS/demos/Asteroids/index.html "link to asteroids demo").
+Or you can find it [here](http://volter9.github.io/RacoonJS/demos/Asteroids/index.html).
