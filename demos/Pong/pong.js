@@ -108,6 +108,14 @@ function Racket(obj) {
 	var win = RJ.winSize();
 	this.mouseHandler = function (state, vec) {
 		if (state === "move" && this.parent.running) {
+			vec = vec2(vec.x,vec.y);
+			if (this.parent.angle % Math.PI*2 != 0) {
+				vec.sub(size2vec(win).div(2)); 
+				vec = vec.rotate(-this.parent.angle);
+				vec.scalar(4/3);
+				vec.add(size2vec(win).div(2)); 
+			}
+			
 			this.setPos(vec2(this.pos.x,vec.y));
 			
 			if (vec.y > win.h-this.rect.h/1.5) {

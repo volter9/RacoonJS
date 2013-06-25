@@ -927,6 +927,44 @@ function Blink() {
 	this.__proto__ = new Action(0);
 	this.__proto__.constructor = Blink;
 }
+/*
+	<RotateTo> [var dur:Number, var alpha:Number, var t:Function] return RotateTo < Action
+	* Description: Animate Rotation
+*/
+function RotateTo(dur,angle) {
+	this.counter = 0;
+	this.angle = angle;
+	this.initAngle = 0;
+	// ...
+	this.animate = function (dt) {
+		dt = 1/RJ.rate;
+		
+		this.counter+= dt;
+		if (this.initAngle == 0 && this.owner.angle != 0) {
+			this.initAngle = this.owner.angle % (Math.PI*2);
+		}
+		
+		var delta;
+		if (this.initAngle < Math.PI) {
+			delta = (this.angle-this.initAngle)/this.duration/RJ.rate;
+		}
+		else {
+			delta = ((Math.PI*2)-this.initAngle)/this.duration/RJ.rate;			
+		}
+		console.log(delta);
+		
+		if (this.counter > this.duration) {
+			this.owner.angle = this.angle;
+			this.owner.deleteAction(this.index);
+		}
+		else {
+			this.owner.angle += delta;
+		}
+	};
+	
+	this.__proto__ = new Action(dur);
+	this.__proto__.constructor = RotateTo;
+}
 
 // ###########
 // Game Object

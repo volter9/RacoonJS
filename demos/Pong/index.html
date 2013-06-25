@@ -65,14 +65,48 @@
 							fillColor: "#fff",
 							strokeColor: "rgba(0,0,0,0)"
 						});
+						var rect = new Rectangle({
+							nameless: true,
+							pos: vec2(320,240),
+							anchor: vec2(0.5,0.5),
+							alpha: 1,
+							size: win,
+							fillColor: "rgba(0,0,0,0)",
+							strokeColor: "#fff",
+							lineWidth: 4
+						});
 						var text = new Text({
 							name: "PauseText",
-							text: "Pause",
+							text: "Pause [||]",
 							pos: size2vec(win).div(2),
 							anchor: vec2(0.5,0.5),
-							font: "Arial",
+							font: "Sans-Serif",
 							fontSize: 32,
 							fillColor: "#000"
+						});
+						var cursor = new Rectangle({
+							name: "cursor",
+							pos: vec2(320,240),
+							anchor: vec2(0.5,0.5),
+							alpha: 1,
+							size: size(10,10),
+							fillColor: "#0f0",
+							enter: function () {
+								game.mouseHandler.addHandler(this);
+							},
+							exit: function () {
+								game.mouseHandler.removeHandler(this);
+							},
+							mouseHandler: function (state,vec) {
+								if (state == "move") {
+									vec = vec2(vec.x,vec.y);
+									vec.sub(size2vec(win).div(2)); 
+									vec = vec.rotate(-this.parent.angle);
+									vec.scalar(4/3);
+									vec.add(size2vec(win).div(2)); 
+									this.setPos(vec);
+								}
+							}
 						});
 						text.visible = overrect.visible = false;
 						
@@ -82,9 +116,11 @@
 						gameScene.addChild(ball);
 						gameScene.addChild(pplatform);
 						gameScene.addChild(bplatform);
-						gameScene.addChild(score);
-						gameScene.addChild(overrect);
-						gameScene.addChild(text);
+						gameScene.addChild(rect);
+						gameScene.addChild(cursor);
+						gameScene.parent.addChild(score);
+						gameScene.parent.addChild(overrect);
+						gameScene.parent.addChild(text);
 					},
 					exit: function () {
 						game.keyboardHandler.removeHandler(gameScene);
@@ -101,9 +137,29 @@
 									RJ.get("PauseText").visible = RJ.get("PauseRect").visible = false;
 								}
 							}
+							if (key == KeyBoard.key_s) {
+								if (gameScene.scale.w == 1) {
+									// to RotationMod
+									gameScene.rotMod = true;
+									gameScene.addAction(new ScaleTo(1,size(0.75,0.75)));
+									gameScene.anchor = vec2(0.5,0.5);
+									gameScene.pos = size2vec(win).div(2);			
+								}
+								else if (gameScene.scale.w == 0.75) {
+									// to NormalMod
+									gameScene.rotMod = false;
+									gameScene.addAction(new ScaleTo(1,size(1,1)));
+									gameScene.addAction(new RotateTo(1,0));
+								}
+							}
+						}
+					},
+					update: function () {
+						if (this.rotMod) {
+							this.angle += Math.PI/720;
 						}
 					}
-				})
+				});
 				
 				game.addChild(gameScene);
 				
