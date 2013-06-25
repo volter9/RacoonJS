@@ -951,7 +951,6 @@ function RotateTo(dur,angle) {
 		else {
 			delta = ((Math.PI*2)-this.initAngle)/this.duration/RJ.rate;			
 		}
-		console.log(delta);
 		
 		if (this.counter > this.duration) {
 			this.owner.angle = this.angle;
