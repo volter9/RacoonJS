@@ -84,30 +84,6 @@
 							fontSize: 32,
 							fillColor: "#000"
 						});
-						var cursor = new Rectangle({
-							name: "cursor",
-							pos: vec2(320,240),
-							anchor: vec2(0.5,0.5),
-							alpha: 1,
-							size: size(10,10),
-							fillColor: "#0f0",
-							enter: function () {
-								game.mouseHandler.addHandler(this);
-							},
-							exit: function () {
-								game.mouseHandler.removeHandler(this);
-							},
-							mouseHandler: function (state,vec) {
-								if (state == "move") {
-									vec = vec2(vec.x,vec.y);
-									vec.sub(size2vec(win).div(2)); 
-									vec = vec.rotate(-this.parent.angle);
-									vec.scalar(4/3);
-									vec.add(size2vec(win).div(2)); 
-									this.setPos(vec);
-								}
-							}
-						});
 						text.visible = overrect.visible = false;
 						
 						bplatform.ball = ball;
@@ -117,7 +93,6 @@
 						gameScene.addChild(pplatform);
 						gameScene.addChild(bplatform);
 						gameScene.addChild(rect);
-						gameScene.addChild(cursor);
 						gameScene.parent.addChild(score);
 						gameScene.parent.addChild(overrect);
 						gameScene.parent.addChild(text);
