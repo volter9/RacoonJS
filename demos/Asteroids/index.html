@@ -21,12 +21,13 @@
 			var gameScene;
 			
 			if (localStorage.mouse == undefined) {
-				localStorage.mouse = 0;
+				localStorage.mouse = "yes";
 			}
 			
 			var options = {
 				mouse: localStorage.mouse,
 			};
+			
 			RJ.load(function (game) {
 				game.init({
 					canvas: "c",
@@ -93,11 +94,11 @@
 						pos: vecNull(),
 						size: win
 					});
+					// Shuttle
 					var shuttle = new Shuttle({
 						name: "Shuttle",
 						pos: size2vec(win).div(2),
 						mouse: options.mouse,
-						
 					});
 					var hpBar = new HealthBar({
 						name: "hpBar",
@@ -259,7 +260,7 @@
 						var forMouse = "Controls for Mouse:\nMouse Move - turn left or right, Space - boost, Click - fire";
 						var forKeyboard = "Controls for Keyboard: \nArrow up - boost, Arrow left,right - turn left,right , Space - fire";
 						var tips = new Text({
-							text: (options.mouse == 1) ? forMouse : forKeyboard,
+							text: (options.mouse) ? forMouse : forKeyboard,
 							name: "Tips",
 							font: "Trebuchet MS",
 							fontSize: 11,
@@ -272,18 +273,12 @@
 						
 						var mouseToKeyboard = new Button({
 							target: function () {
-								options.mouse = (options.mouse == 0) ? 1 : 0;
-								if (options.mouse == 1) {
-									this.label = "Mouse >";
-									tips.text = forMouse;
-								}
-								else {
-									this.label = "< Keyboard";
-									tips.text = forKeyboard;
-								}
+								options.mouse = (options.mouse == "yes") ? "no" : "yes";
 								localStorage.mouse = options.mouse;
+								
+								this.label = (options.mouse == "yes") ? "Mouse" : "Keyboard";
 							},
-							label: (localStorage.mouse == 1) ? "Mouse >" : "< Keyboard",
+							label: (options.mouse == "yes") ? "Mouse" : "Keyboard",
 							pos: size2vec(win).div(2).add(vec2(0,75)),
 							anchor: vec2(0.5,0.5),
 							size: size(100,30),

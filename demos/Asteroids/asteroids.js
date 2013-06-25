@@ -108,7 +108,7 @@ function Shuttle(obj) {
 		Game.super(this).setPos(vec);
 		this.circle.pos = vec;
 	}
-	this.mouseControl = Game.argDef(obj.mouse, false);
+	this.mouseControl = (obj.mouse == "yes") ? true : false;
 	this.mouseCursor = size2vec(RJ.winSize()).div(2);
 	this.onEnter = function () {
 		if (!this.mouseControl) {
@@ -582,6 +582,7 @@ function Asteroid(obj) {
 	var winSize = RJ.winSize();
 	this.update = function (dt) {
 		this.poly.angle += Math.PI/360;
+		this.velocity.scalar(1.001);
 		
 		if (this.bullets == undefined) {
 			this.bullets = RJ.get("Bullets").bullets;
