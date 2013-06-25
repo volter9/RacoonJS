@@ -1957,7 +1957,7 @@ function Game() {
 	* Description: if arg is equals to undefined then return def (default)
 */
 Game.argDef = function (arg,def) {
-	return (arg) ? arg : def;
+	return (arg != undefined) ? arg : def;
 }
 /*
 	+ super [var obj:GameObject] return Object
