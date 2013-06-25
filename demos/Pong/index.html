@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF8" />
+		<title>Pong - RacoonJS - Canvas Game Engine</title>
+		<style>
+			body {
+				padding: 0px;
+				margin: 0px;
+			}
+			
+			#container {
+				width: 640px; 
+				height: 480px; 
+				margin: 20px auto;
+			}
+		</style>
+		<script type="text/javascript" src="racoon.js"></script>
+		<script type="text/javascript" src="pong.js"></script>
+		<script type="text/javascript">
+			RJ.load(function (game) {
+				game.init({
+					canvas: "c",
+					size: size(640,480),
+					rate: 45,
+				});
+				
+				var win = game.winSize();
+				var gameScene = new Scene({
+					name: "GameScene",
+					enter: function () {
+						game.keyboardHandler.addHandler(gameScene);
+						
+						var pplatform = new Racket({
+							pos: vec2(30,win.h/2),
+							nameless: true
+						});
+						
+						var bplatform = new BRacket({
+							pos: vec2(win.w-30,win.h/2),
+							nameless: true
+						});
+						
+						var ball = new Ball({
+							pos: size2vec(win).div(2),
+							name: "Ball",
+							platforms: [pplatform,bplatform]
+						});
+						
+						var boundary = new Rectangle({
+							anchor: vec2(0.5,0),
+							size: size(10,win.h),
+							fillColor: "#444",
+							pos: vec2(win.w/2,0),
+							strokeColor: "#000",
+							name: "Boundary"
+						});
+						var score = new Score();
+						var overrect = new Rectangle({
+							name: "PauseRect",
+							pos: vec2(320,240),
+							anchor: vec2(0.5,0.5),
+							alpha: 0.25,
+							size: size(640,240),
+							fillColor: "#fff",
+							strokeColor: "rgba(0,0,0,0)"
+						});
+						var text = new Text({
+							name: "PauseText",
+							text: "Pause",
+							pos: size2vec(win).div(2),
+							anchor: vec2(0.5,0.5),
+							font: "Arial",
+							fontSize: 32,
+							fillColor: "#000"
+						});
+						text.visible = overrect.visible = false;
+						
+						bplatform.ball = ball;
+						
+						gameScene.addChild(boundary);
+						gameScene.addChild(ball);
+						gameScene.addChild(pplatform);
+						gameScene.addChild(bplatform);
+						gameScene.addChild(score);
+						gameScene.addChild(overrect);
+						gameScene.addChild(text);
+					},
+					exit: function () {
+						game.keyboardHandler.removeHandler(gameScene);
+					},
+					keyboardHandler: function (state, key) {
+						if (state == "up") {
+							if (key == KeyBoard.key_a) {
+								if (gameScene.running) {
+									gameScene.pause();
+									RJ.get("PauseText").visible = RJ.get("PauseRect").visible = true;
+								}
+								else {
+									gameScene.play();
+									RJ.get("PauseText").visible = RJ.get("PauseRect").visible = false;
+								}
+							}
+						}
+					}
+				})
+				
+				game.addChild(gameScene);
+				
+				game.showFPS();
+			});
+		</script>
+	</head>
+	<body>
+		<div id="container">
+			<canvas id="c">
+				<p>Your browser doesn't support HTML5 Canvas technology. 
+				   Please update your browser or download fresh version of your other browser.</p>
+			</canvas>
+		</div>
+	</body>
+</html>
