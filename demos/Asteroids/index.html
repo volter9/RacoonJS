@@ -277,6 +277,7 @@
 								localStorage.mouse = options.mouse;
 								
 								this.label = (options.mouse == "yes") ? "Mouse" : "Keyboard";
+								tips.text = (options.mouse == "yes") ? forMouse : forKeyboard;
 							},
 							label: (options.mouse == "yes") ? "Mouse" : "Keyboard",
 							pos: size2vec(win).div(2).add(vec2(0,75)),

@@ -273,7 +273,9 @@ function Shuttle(obj) {
 			shuttle.deleteAction(0);
 			shuttle.setPos(size2vec(winSize).div(2));
 			shuttle.triangle.deleteAction(0);
+			shuttle.triangle.opacity = 1;
 			shuttle.radiator.deleteAction(0);
+			shuttle.radiator.opacity = 0;
 			shuttle.velocity = vecNull();
 			shuttle.keyboardHandler("down",KeyBoard.arr_u);
 			shuttle.disable = false;
