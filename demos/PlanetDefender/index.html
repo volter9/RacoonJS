@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Shooter - RacoonJS</title>
+		<style>
+			div#cont {
+				margin: 0px auto;
+				display:block;
+				width: 640px;
+				height: 480px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="cont">
+			<canvas id="c" style="cursor: none;"></canvas>
+		</div>
+		<script type="text/javascript" src="racoon.js"></script>
+		<script type="text/javascript" src="shooter.js"></script>
+		<script type="text/javascript">
+			(function () {
+				var Game = new RJ.Game();
+						
+				Game.init({
+					canvas: 'c',
+					rate: 60,
+					size: size(640,480)
+				});
+			
+				var generateZombies = function (wave,object,player) {
+					var paths = [pathfinder.findPath(vec2(2,2),vec2(42,42)),pathfinder.findPath(vec2(2,2),vec2(42,42))];
+					var total = wave * 2;
+					var spawn = ((((wave/5) >> 0) * 0.1) < 0.6) ? (((wave/5) >> 0) * 0.1) : 0.6;
+					
+					for (var i = 0; i < total; i ++) {
+						var Zombie = new Shooter.Zombie({
+							size: size(18,18),
+							nameless: true,
+							pos: vec2(45,45),
+							anchor: vec2(0.5,0.5),
+							nameless: true,
+							spawnTime: i * (1 - spawn),
+							hp: 5 + 5 * ((wave/5) >> 0),
+							speed: 1.5 + ((wave/10) >> 0),
+						});
+						Zombie.player = player;
+						Zombie.GameStats = GameStats;
+						Zombie.path = paths[i % 2];
+						
+						console.log(Zombie.hp, Zombie.speed, spawn);
+					
+						object.addChild(Zombie);
+					}
+				};
+				var win = Game.winSize();
+				var GameStats = {
+					wave: 1,
+					money: 0,
+					break: false,
+					towerPlacing: false,
+					towerCost: 0,
+					tower: null,
+				};
+				
+				var SimpleTower, AdvancedTower, SuperTower;
+				var BreakGui;
+				var pathfinder = null;
+				var gui = new RJ.GameObject({
+					size: win,
+					name: "GUI",
+					enter: function () {
+						var StartButton = new Shooter.Button({
+							name: "StartButton",
+							pos: vec2(win.w/2,0),
+							anchor: vec2(0.5,0),
+							size: size(180,40),
+							text: "Before break: 4 waves",
+							selector: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									GameStats.break = false;
+									GameStats.wave++;
+									BreakGui.visible = false;
+									Tips.text = "Press button to start";
+								}
+							},
+							hover: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									Tips.text = "Press button to start";
+								}
+							},
+						});
+						var UpgradeSpeedButton = new Shooter.Button({
+							name: "UpgradeSpeedButton",
+							pos: vec2(6,win.h/2-35),
+							anchor: vec2(0,0.5),
+							size: size(86,30),
+							text: "+ Speed",
+							selector: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									if (Game.get("Player").speed < 5 && GameStats.money >= 30) {
+										Game.get("Player").speed += 0.5;
+										GameStats.money -= 30;
+									}
+								}
+							},
+							hover: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									Tips.text = "Cost: $30";
+								}
+							},
+						});
+						var HealButton = new Shooter.Button({
+							name: "HealButton",
+							pos: vec2(6,win.h/2),
+							anchor: vec2(0,0.5),
+							size: size(86,30),
+							text: "Heal",
+							selector: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									if (Game.get("Player").hp != 10 && GameStats.money >= 100) {
+										Game.get("Player").hp = 10;
+										GameStats.money -= 100;
+									}
+								}
+							},
+							hover: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									Tips.text = "Cost: $100";
+								}
+							},
+						});
+						var UpgradeFireButton = new Shooter.Button({
+							name: "UpgradeFireButton",
+							pos: vec2(6,win.h/2+35),
+							anchor: vec2(0,0.5),
+							size: size(86,30),
+							text: "+ Fire Rate",
+							selector: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									if (Game.get("Cursor").dur > 5 && GameStats.money >= 40) {
+										Game.get("Cursor").dur--;
+										GameStats.money -= 40;
+									}
+								}
+							},
+							hover: function () {
+								if (GameStats.break && !GameStats.towerPlacing) {
+									Tips.text = "Cost: $40";
+								}
+							},
+						});
+						var WaveIndicator = new RJ.Text({
+							pos: vec2(win.w/2,win.h - 20),
+							text: "Wave 1",
+							font: "Verdana",
+							fontSize: 19,
+							anchor: vec2(0.5,0.5),
+							name: "WaveIndicator",
+							fillColor: "#fff",
+							strokeColor: "#fff",
+						});
+						var MoneyIndicator = new RJ.Text({
+							pos: vec2(75,win.h - 15),
+							text: "$0",
+							font: "Verdana",
+							fontSize: 14,
+							anchor: vec2(0.5,0.5),
+							name: "MoneyIndicator",
+							fillColor: "#fff",
+							strokeColor: "#fff",
+							update: function () {
+								this.text = "$"+GameStats.money;
+							}
+						});
+						var EnemyIndicator = new RJ.Text({
+							pos: vec2(win.w-75,win.h - 15),
+							text: "2",
+							font: "Verdana",
+							fontSize: 14,
+							anchor: vec2(0.5,0.5),
+							name: "EnemyIndicator",
+							fillColor: "#fff",
+							strokeColor: "#fff",
+							update: function () {
+								this.text = Game.get("Zombies").children.length;
+							}
+						});
+						var RectangleWave = new RJ.Rectangle({
+							pos: vec2(win.w/2,win.h),
+							size: size(100,40),
+							anchor: vec2(0.5,1),
+							nameless: true,
+						});
+						var RectangleMoney = new RJ.Rectangle({
+							pos: vec2(40,win.h),
+							size: size(70,30),
+							anchor: vec2(0,1),
+							nameless: true,
+						});
+						var RectangleEnemies = new RJ.Rectangle({
+							pos: vec2(win.w-40,win.h),
+							size: size(70,30),
+							anchor: vec2(1,1),
+							nameless: true,
+						});
+						var RectangleTips = new RJ.Rectangle({
+							pos: vec2(win.w/2,40),
+							size: size(160,20),
+							anchor: vec2(0.5,0),
+							nameless: true,
+						});
+						var Tips = new RJ.Text({
+							pos: vec2(win.w/2,50),
+							anchor: vec2(0.5,0.5),
+							nameless: true,
+							text: "Press button to start",
+							font: "Verdana",
+							fillColor: "#fff",
+							fontSize: 10,
+						});
+						var Cursor = new Shooter.Cursor({
+							name: "Cursor",
+							pos: size2vec(win).div(2),
+							anchor: vec2(0.5,0.5),
+							size: size(30,30),
+							strokeColor: "#0f0",
+						});
+						
+						Cursor.gameStats = GameStats;
+						
+						BreakGui = new RJ.GameObject({
+							name: "BreakGUI",
+							size: win,
+						});
+						BreakGui.visible = false;
+						
+						var ImprovmentsRectangle = new RJ.Rectangle({
+							pos: vec2(0,win.h/2),
+							size: size(100,116),
+							anchor: vec2(0,0.5),
+							nameless: true,
+						});
+						
+						// Towers
+						var TowersRectangle = new RJ.Rectangle({
+							pos: vec2(win.w,win.h/2),
+							size: size(34,104),
+							anchor: vec2(1,0.5),
+							nameless: true,
+						});
+						
+						SimpleTower = new Shooter.Button({
+							name: "SimpleTower",
+							pos: vec2(win.w-3,win.h/2+30),
+							anchor: vec2(1,0.5),
+							size: size(25,25),
+							text: "ST",
+							selector: function () {
+								if (GameStats.break && GameStats.money >= 50) {
+									GameStats.towerPlacing = true;
+									GameStats.tower = Shooter.Tower;
+									GameStats.towerCost = 50;
+								}
+							},
+							hover: function () {
+								if (GameStats.break) {
+									Tips.text = "Cost: $50";
+								}
+							},
+						});
+						
+						AdvancedTower = new Shooter.Button({
+							name: "AdvancedTower",
+							pos: vec2(win.w-3,win.h/2-30),
+							anchor: vec2(1,0.5),
+							size: size(25,25),
+							text: "AT",
+							selector: function () {
+								if (GameStats.break && GameStats.money >= 70) {
+									GameStats.towerPlacing = true;
+									GameStats.tower = Shooter.AdvancedTower;
+									GameStats.towerCost = 70;
+								}
+							},
+							hover: function () {
+								if (GameStats.break) {
+									Tips.text = "Cost: $70";
+								}
+							},
+						});
+						
+						SuperTower = new Shooter.Button({
+							name: "SuperTower",
+							pos: vec2(win.w-3,win.h/2),
+							anchor: vec2(1,0.5),
+							size: size(25,25),
+							text: "SS",
+							selector: function () {
+								if (GameStats.break && GameStats.money >= 100) {
+									GameStats.towerPlacing = true;
+									GameStats.tower = Shooter.SuperTower;
+									GameStats.towerCost = 100;
+								}
+							},
+							hover: function () {
+								if (GameStats.break) {
+									Tips.text = "Cost: $100";
+								}
+							},
+						});
+											
+						// Adding to gui
+						this.addChild(RectangleWave);
+						this.addChild(RectangleMoney);
+						this.addChild(RectangleEnemies);
+						
+						this.addChild(BreakGui);
+						BreakGui.addChild(ImprovmentsRectangle);
+						BreakGui.addChild(UpgradeSpeedButton);
+						BreakGui.addChild(UpgradeFireButton);
+						BreakGui.addChild(HealButton);
+						BreakGui.addChild(RectangleTips);
+						BreakGui.addChild(Tips);
+						BreakGui.addChild(TowersRectangle);
+						BreakGui.addChild(SimpleTower);
+						BreakGui.addChild(AdvancedTower);
+						BreakGui.addChild(SuperTower);
+					
+						this.addChild(WaveIndicator);
+						this.addChild(MoneyIndicator);
+						this.addChild(EnemyIndicator);
+					
+						this.addChild(StartButton);
+						this.addChild(Cursor);
+					
+						Game.keyboardHandler.addHandler(this);
+						Game.mouseHandler.addHandler(this);
+					},
+					keyboardHandler: function (state, key) {
+						if (state == "up" && key == RJ.KeyBoard.space) {
+							if (gameScene.running == true) {
+								gameScene.pause();
+							}
+							else {
+								gameScene.play();
+							}
+						}	
+					},
+					mouseHandler: function (state, vec) {
+						if (state == "click" && GameStats.towerPlacing 
+							&& (!SimpleTower.rect.containVec(vec) && !AdvancedTower.rect.containVec(vec) && !SuperTower.rect.containVec(vec)) 
+							&& GameStats.money >= GameStats.towerCost) {
+							var relativePos = vec.clone().sub(gameScene.pos);
+							var Grid = Game.get("Grid")
+							
+							var x = (relativePos.x / gameScene.get("Grid").blockSize.w) >> 0;
+							var y = (relativePos.y / gameScene.get("Grid").blockSize.h) >> 0;
+							
+							if (Grid.cells[x][y] == 1) {							
+								var tower = new GameStats.tower({
+									pos: vec2(x,y).scalar(Grid.blockSize.w).add(size2vec(Grid.blockSize).div(2)),
+									anchor: vec2(0.5,0.5),
+									size: size(20,20),
+									nameless: true,
+								});
+								Game.get("GameScene").addChild(tower);
+							
+								GameStats.money -= GameStats.towerCost;
+								GameStats.towerPlacing = false;
+								GameStats.tower = null;
+							}
+						}
+					}
+				});
+				var gameScene = new RJ.Scene({
+					name: "GameScene",
+					enter: function () {
+						var Bullets = new Shooter.Bullets({
+							name: "Bullets",
+							fillColor: "#fff",
+							size: win,
+						});
+					
+						var Player = new Shooter.Player({
+							name: "Player",
+							size: size(15,15),
+							anchor: vec2(0.5,0.5),
+						});
+					
+						var Grid = new Shooter.Grid({
+							name: "Grid",
+							dimension: size(48,48),
+							blockSize: size(22,22),
+							strokeColor: "#444"
+						});
+						pathfinder = new Shooter.PathFinder(Grid.cells);
+					
+						Bullets.grid = Grid;
+					
+						var Zombies = new RJ.GameObject({
+							name: "Zombies",
+							pos: vec2(0,0),
+							size: win,
+							enter: function () {
+								generateZombies(GameStats.wave,this,Player);
+								this.timer = Game.rate * 3;
+							},
+							update: function () {
+								if (this.children.length == 0 && this.timer <= 0) {
+									if ((GameStats.wave+1) % 5 == 0) {
+										GameStats.break = true;
+										gui.get("WaveIndicator").text = "Break";
+										gui.get("StartButton").label = "Start";
+										BreakGui.visible = true;
+									}
+								}
+							
+								if (this.children.length == 0 && this.timer <= 0 && !GameStats.break) {
+									GameStats.wave ++;
+								
+									gui.get("StartButton").label = "Before break: "+(5-(GameStats.wave%5))+" waves";
+									gui.get("WaveIndicator").text = "Wave "+GameStats.wave;
+									generateZombies(GameStats.wave,this,Player);
+									this.timer = Game.rate * 3;
+								}
+								else if (this.children.length == 0 && this.timer > 0) {
+									this.timer--;
+								}
+							},
+						});
+					
+						var Towers = new RJ.GameObject({
+							name: "Towers",
+							size: win,
+						});
+					
+						this.addChild(Grid);
+						this.addChild(Bullets);
+						this.addChild(Zombies);
+						this.addChild(Towers);
+						this.addChild(Player);
+					},
+				});
+			
+				Game.addChild(gameScene);
+				Game.addChild(gui);
+				//Game.turnOnDebug()
+				//Game.showFPS();
+			})();
+		</script>
+	</body>
+</html>
