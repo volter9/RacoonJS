@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Planet Defender - RacoonJS</title>
+		<meta charset="UTF-8" />
+	</head>
+	<body>
+		<canvas id="c"></canvas>
+		<canvas id="hc" style="background: #f00; border: 1px solid #000; display:none;"></canvas>
+		<script src="racoon.js"></script>
+		<script src="defender.js"></script>
+		<script>
+			var hc = document.getElementById('hc');
+			var ctx = hc.getContext('2d');
+			
+			hc.width = hc.height = 120;
+			
+			ctx.fillStyle = "#fff";
+			ctx.beginPath();
+			ctx.arc(60,60,55,0,Math.PI*2,true);
+			ctx.fill();
+			ctx.stroke();
+			ctx.strokeStyle = "#000";
+			ctx.fillStyle = "#fff";
+			ctx.lineWidth = 5;
+			ctx.beginPath();
+			ctx.arc(60,60,50,0,Math.PI*2,true);
+			ctx.fill();
+			ctx.stroke();
+			
+			ctx.save();
+			ctx.beginPath();
+			ctx.arc(60,60,50,0,Math.PI*2,true);
+			ctx.clip();
+			for(var i = 0; i < 5; i++) {
+				var x = (Math.random() * 110) >> 0;
+				var y = (Math.random() * 110) >> 0;
+				var rad = 10 + (Math.random() * 20) >> 0;
+				
+				ctx.fillStyle = "#000";
+				ctx.beginPath();
+				ctx.arc(x,y,rad,0,Math.PI*2,true);
+				ctx.fill();
+			}
+			
+			ctx.restore();
+			
+			var planet = new Image();
+			planet.src = hc.toDataURL();
+			
+			ctx.clearRect(0,0,hc.width,hc.height);
+			hc.width = hc.height = 20;
+			
+			ctx.fillStyle = "#fff";
+			ctx.fillRect(7,0,6,20);
+			ctx.fillRect(0,15,20,5);
+			
+			var tower = new Image();
+			tower.src = hc.toDataURL();
+			
+			ctx.clearRect(0,0,hc.width,hc.height);
+			hc.width = hc.height = 60;
+			
+			var p = {x:30,y:30};
+			var randSides = 10+((Math.random() * 4)>>0);
+			
+			ctx.fillStyle = "#000";
+			ctx.strokeStyle = "#fff";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			for (var i = 0; i < randSides; i++) {
+				var angle = (i/randSides) * (Math.PI*2);
+				var rand = 25 + ((Math.random() * 5) >> 0);
+				var cos = Math.cos(angle)*rand;
+				var sin = Math.sin(angle)*rand;
+				
+				var point = {x:p.x + cos,y: p.y + sin};
+				
+				if (i == 0) {
+					ctx.moveTo(point.x,point.y);
+				}
+				else {
+					ctx.lineTo(point.x,point.y);
+				}
+			}
+			ctx.closePath();
+			ctx.fill();
+			ctx.stroke();
+			
+			var meteor = new Image();
+			meteor.src = hc.toDataURL();
+//			hc.style.display = "none";
+		</script>
+		<script>
+// 			(function () {
+				var Game = new RJ.Game();
+				
+				Game.init({
+					canvas: "c",
+					size: size(640,480),
+					rate: 60,
+				});
+				var win = Game.winSize();
+				
+				var wave = 0;
+				var meteors, ShieldHP, YouLoose;
+				var Scene = new RJ.Scene({
+					name: "MainScene",
+					enter: function () {
+						YouLoose = new RJ.Text({
+							name: "LooseText",
+							text: "YOU LOOSE!",
+							font: "Verdana",
+							fontSize: 320,
+							anchor: vec2(0.5,0.5),
+							pos: size2vec(win).div(2).sub(vec2(0,160)),
+							fillColor: "#fff",
+						});
+						YouLoose.visible = false;
+						YouLoose.opacity = 0;
+						
+						ShieldHP = new RJ.Oval({
+							name: "ShieldHP",
+							radii: 53,
+							strokeColor: "hsl(120,100%,50%)",
+							fillColor: "rgba(0,0,0,0)",
+							pos: size2vec(win).div(2),
+							anchor: vec2(0.5,0.5),
+							alpha: 0.5,
+							lineWidth: 2,
+						});
+						ShieldHP.maxHp = 10;
+						ShieldHP.hp = 10;
+						
+						var Sparks = new Defender.Sparks({
+							name: "Sparks",
+						});
+						
+						var Planet = new RJ.Image({
+							name: "Planet",
+							image: planet,
+							pos: size2vec(win).div(2),
+							size: size(60,60),
+							anchor: vec2(0.5,0.5),
+						});
+						
+						Planet.addAction(
+							new RJ.Infinite(new RJ.RotateBy(12,-Math.PI/4))
+						);
+						
+						var Shield = new RJ.Oval({
+							name: "Shield",
+							radii: 60,
+							pos: size2vec(win).div(2),
+							fillColor: "rgba(0,0,0,0)",
+							anchor: vec2(0.5,0.5),
+							lineWidth: 1,
+						});
+						
+						var defender = new Defender.Tower({
+							name: "Tower",
+							image: tower,
+							pos: size2vec(win).div(2).add(vec2(0,-60)),
+							anchor: vec2(0.5,1),
+						});
+						
+						var bullets = new Defender.Bullets({
+							name: "Bullets",
+							pos: vecNull(),
+							size: win,
+							fillColor: "#fff",
+						});
+						
+						var Stars = new Defender.Stars({
+							name: "Stars",
+							fillColor: "#fff",
+							anchor: vec2(0.5,0.5),
+							pos: size2vec(Game.winSize()).div(2),
+							alpha: 0.3,
+						});
+						
+						meteors = new Defender.Meteors({
+							name: "Meteors",
+							image: meteor,
+						});
+						meteors.obstacle = new RJ.Circle(Shield.pos,Shield.radii);
+						meteors.bullets = bullets;
+						meteors.shield = ShieldHP;
+						meteors.sparks = Sparks;
+						meteors.planet = Planet;
+						
+						defender.bullets = bullets;
+						
+						this.addChild(Stars);
+						this.addChild(Sparks);
+						this.addChild(Shield);
+						this.addChild(ShieldHP);
+						this.addChild(Planet);
+						this.addChild(bullets);	
+						this.addChild(meteors);					
+						this.addChild(defender);
+						this.addChild(YouLoose);
+					},
+					update: function () {
+						if (meteors.count() == 0 && ShieldHP.hp > 0) {
+							wave ++;
+							
+							for (var i = 0; i < wave * 2; i++) {
+								var angle = (i/(wave*2)) * (Math.PI*2);
+								var distance = 400 + (Math.random() * 400);
+								var acc = 0.1 + ((wave / 2) >> 0) * 0.1;
+								var pos = RJ.Vector.angleToVec(angle).scalar(distance).add(size2vec(Game.winSize()).div(2));
+								var vel = RJ.Vector.angleToVec(angle-Math.PI).scalar(acc + 0.5);
+								
+								meteors.add(pos,vel);
+							}
+						}
+						else if(ShieldHP.hp <= 0) {
+							if (!YouLoose.visible) {
+								YouLoose.visible = true;
+								YouLoose.addAction(new RJ.ScaleTo(1,size(0.1,0.1)));
+								YouLoose.addAction(new RJ.AlphaTo(1,1));
+							}
+						}
+					}
+				});
+				
+				
+				Game.addChild(Scene);
+				Game.showFPS();
+// 			})();
+		</script>
+	</body>
+</html>
