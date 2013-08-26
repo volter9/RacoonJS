@@ -1,453 +1,259 @@
 <!DOCTYPE html>
 <html>
 	<head>
+		<title>Planet Defender - RacoonJS</title>
 		<meta charset="UTF-8" />
-		<title>Shooter - RacoonJS</title>
-		<style>
-			div#cont {
-				margin: 0px auto;
-				display:block;
-				width: 640px;
-				height: 480px;
-			}
-		</style>
 	</head>
 	<body>
-		<div id="cont">
-			<canvas id="c" style="cursor: none;"></canvas>
-		</div>
-		<script type="text/javascript" src="racoon.js"></script>
-		<script type="text/javascript" src="shooter.js"></script>
-		<script type="text/javascript">
-			(function () {
-				var Game = new RJ.Game();
-						
-				Game.init({
-					canvas: 'c',
-					rate: 60,
-					size: size(640,480)
-				});
+		<canvas id="c"></canvas>
+		<canvas id="hc" style="background: #f00; border: 1px solid #000; display:none;"></canvas>
+		<script src="racoon.js"></script>
+		<script src="defender.js"></script>
+		<script>
+			var hc = document.getElementById('hc');
+			var ctx = hc.getContext('2d');
 			
-				var generateZombies = function (wave,object,player) {
-					var paths = [pathfinder.findPath(vec2(2,2),vec2(42,42)),pathfinder.findPath(vec2(2,2),vec2(42,42))];
-					var total = wave * 2;
-					var spawn = ((((wave/5) >> 0) * 0.1) < 0.6) ? (((wave/5) >> 0) * 0.1) : 0.6;
-					
-					for (var i = 0; i < total; i ++) {
-						var Zombie = new Shooter.Zombie({
-							size: size(18,18),
-							nameless: true,
-							pos: vec2(45,45),
-							anchor: vec2(0.5,0.5),
-							nameless: true,
-							spawnTime: i * (1 - spawn),
-							hp: 5 + 5 * ((wave/5) >> 0),
-							speed: 1.5 + ((wave/10) >> 0),
-						});
-						Zombie.player = player;
-						Zombie.GameStats = GameStats;
-						Zombie.path = paths[i % 2];
-						
-						console.log(Zombie.hp, Zombie.speed, spawn);
-					
-						object.addChild(Zombie);
-					}
-				};
-				var win = Game.winSize();
-				var GameStats = {
-					wave: 1,
-					money: 0,
-					break: false,
-					towerPlacing: false,
-					towerCost: 0,
-					tower: null,
-				};
+			hc.width = hc.height = 120;
+			
+			ctx.fillStyle = "#fff";
+			ctx.beginPath();
+			ctx.arc(60,60,55,0,Math.PI*2,true);
+			ctx.fill();
+			ctx.stroke();
+			ctx.strokeStyle = "#000";
+			ctx.fillStyle = "#fff";
+			ctx.lineWidth = 5;
+			ctx.beginPath();
+			ctx.arc(60,60,50,0,Math.PI*2,true);
+			ctx.fill();
+			ctx.stroke();
+			
+			ctx.save();
+			ctx.beginPath();
+			ctx.arc(60,60,50,0,Math.PI*2,true);
+			ctx.clip();
+			for(var i = 0; i < 5; i++) {
+				var x = (Math.random() * 110) >> 0;
+				var y = (Math.random() * 110) >> 0;
+				var rad = 10 + (Math.random() * 20) >> 0;
 				
-				var SimpleTower, AdvancedTower, SuperTower;
-				var BreakGui;
-				var pathfinder = null;
-				var gui = new RJ.GameObject({
-					size: win,
-					name: "GUI",
+				ctx.fillStyle = "#000";
+				ctx.beginPath();
+				ctx.arc(x,y,rad,0,Math.PI*2,true);
+				ctx.fill();
+			}
+			
+			ctx.restore();
+			
+			var planet = new Image();
+			planet.src = hc.toDataURL();
+			
+			ctx.clearRect(0,0,hc.width,hc.height);
+			hc.width = hc.height = 20;
+			
+			ctx.fillStyle = "#fff";
+			ctx.fillRect(7,0,6,20);
+			ctx.fillRect(0,15,20,5);
+			
+			var tower = new Image();
+			tower.src = hc.toDataURL();
+			
+			ctx.clearRect(0,0,hc.width,hc.height);
+			hc.width = hc.height = 60;
+			
+			var p = {x:30,y:30};
+			var randSides = 10+((Math.random() * 4)>>0);
+			
+			ctx.fillStyle = "#000";
+			ctx.strokeStyle = "#fff";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			for (var i = 0; i < randSides; i++) {
+				var angle = (i/randSides) * (Math.PI*2);
+				var rand = 25 + ((Math.random() * 5) >> 0);
+				var cos = Math.cos(angle)*rand;
+				var sin = Math.sin(angle)*rand;
+				
+				var point = {x:p.x + cos,y: p.y + sin};
+				
+				if (i == 0) {
+					ctx.moveTo(point.x,point.y);
+				}
+				else {
+					ctx.lineTo(point.x,point.y);
+				}
+			}
+			ctx.closePath();
+			ctx.fill();
+			ctx.stroke();
+			
+			var meteor = new Image();
+			meteor.src = hc.toDataURL();
+//			hc.style.display = "none";
+		</script>
+		<script>
+ 			(function () {
+				var Game = new RJ.Game();
+				
+				Game.init({
+					canvas: "c",
+					size: size(640,480),
+					rate: 60,
+				});
+				var win = Game.winSize();
+				
+				var wave = 0;
+				var meteors, ShieldHP, YouLoose, WaveIndicator;
+				var Scene = new RJ.Scene({
+					name: "MainScene",
 					enter: function () {
-						var StartButton = new Shooter.Button({
-							name: "StartButton",
-							pos: vec2(win.w/2,0),
-							anchor: vec2(0.5,0),
-							size: size(180,40),
-							text: "Before break: 4 waves",
-							selector: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									GameStats.break = false;
-									GameStats.wave++;
-									BreakGui.visible = false;
-									Tips.text = "Press button to start";
-								}
-							},
-							hover: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									Tips.text = "Press button to start";
-								}
-							},
+						var Counter = new Defender.Counter({
+							name: "Counter",
+							text: "Killed 0 asteroids",
+							font: "Verdana",
+							fontSize: 14,
+							anchor: vec2(0.5,1),
+							pos: size2vec(win).sub(vec2(win.w/2,10)),
+							fillColor: "#fff",
 						});
-						var UpgradeSpeedButton = new Shooter.Button({
-							name: "UpgradeSpeedButton",
-							pos: vec2(6,win.h/2-35),
-							anchor: vec2(0,0.5),
-							size: size(86,30),
-							text: "+ Speed",
-							selector: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									if (Game.get("Player").speed < 5 && GameStats.money >= 30) {
-										Game.get("Player").speed += 0.5;
-										GameStats.money -= 30;
-									}
-								}
-							},
-							hover: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									Tips.text = "Cost: $30";
-								}
-							},
+						
+						YouLoose = new RJ.Text({
+							name: "LooseText",
+							text: "YOU LOST!",
+							font: "Verdana",
+							fontSize: 320,
+							anchor: vec2(0.5,0.5),
+							pos: size2vec(win).div(2).sub(vec2(0,160)),
+							fillColor: "#fff",
 						});
-						var HealButton = new Shooter.Button({
-							name: "HealButton",
-							pos: vec2(6,win.h/2),
-							anchor: vec2(0,0.5),
-							size: size(86,30),
-							text: "Heal",
-							selector: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									if (Game.get("Player").hp != 10 && GameStats.money >= 100) {
-										Game.get("Player").hp = 10;
-										GameStats.money -= 100;
-									}
-								}
-							},
-							hover: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									Tips.text = "Cost: $100";
-								}
-							},
-						});
-						var UpgradeFireButton = new Shooter.Button({
-							name: "UpgradeFireButton",
-							pos: vec2(6,win.h/2+35),
-							anchor: vec2(0,0.5),
-							size: size(86,30),
-							text: "+ Fire Rate",
-							selector: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									if (Game.get("Cursor").dur > 5 && GameStats.money >= 40) {
-										Game.get("Cursor").dur--;
-										GameStats.money -= 40;
-									}
-								}
-							},
-							hover: function () {
-								if (GameStats.break && !GameStats.towerPlacing) {
-									Tips.text = "Cost: $40";
-								}
-							},
-						});
-						var WaveIndicator = new RJ.Text({
-							pos: vec2(win.w/2,win.h - 20),
+						YouLoose.visible = false;
+						YouLoose.opacity = 0;
+						
+	 					WaveIndicator = new RJ.Text({
+							name: "Waves",
 							text: "Wave 1",
 							font: "Verdana",
-							fontSize: 19,
-							anchor: vec2(0.5,0.5),
-							name: "WaveIndicator",
-							fillColor: "#fff",
-							strokeColor: "#fff",
-						});
-						var MoneyIndicator = new RJ.Text({
-							pos: vec2(75,win.h - 15),
-							text: "$0",
-							font: "Verdana",
 							fontSize: 14,
-							anchor: vec2(0.5,0.5),
-							name: "MoneyIndicator",
-							fillColor: "#fff",
-							strokeColor: "#fff",
-							update: function () {
-								this.text = "$"+GameStats.money;
-							}
-						});
-						var EnemyIndicator = new RJ.Text({
-							pos: vec2(win.w-75,win.h - 15),
-							text: "2",
-							font: "Verdana",
-							fontSize: 14,
-							anchor: vec2(0.5,0.5),
-							name: "EnemyIndicator",
-							fillColor: "#fff",
-							strokeColor: "#fff",
-							update: function () {
-								this.text = Game.get("Zombies").children.length;
-							}
-						});
-						var RectangleWave = new RJ.Rectangle({
-							pos: vec2(win.w/2,win.h),
-							size: size(100,40),
-							anchor: vec2(0.5,1),
-							nameless: true,
-						});
-						var RectangleMoney = new RJ.Rectangle({
-							pos: vec2(40,win.h),
-							size: size(70,30),
-							anchor: vec2(0,1),
-							nameless: true,
-						});
-						var RectangleEnemies = new RJ.Rectangle({
-							pos: vec2(win.w-40,win.h),
-							size: size(70,30),
-							anchor: vec2(1,1),
-							nameless: true,
-						});
-						var RectangleTips = new RJ.Rectangle({
-							pos: vec2(win.w/2,40),
-							size: size(160,20),
 							anchor: vec2(0.5,0),
-							nameless: true,
-						});
-						var Tips = new RJ.Text({
-							pos: vec2(win.w/2,50),
-							anchor: vec2(0.5,0.5),
-							nameless: true,
-							text: "Press button to start",
-							font: "Verdana",
+							pos: vec2(win.w/2,10),
 							fillColor: "#fff",
-							fontSize: 10,
 						});
-						var Cursor = new Shooter.Cursor({
-							name: "Cursor",
+						
+						ShieldHP = new RJ.Oval({
+							name: "ShieldHP",
+							radii: 53,
+							strokeColor: "hsl(120,100%,50%)",
+							fillColor: "rgba(0,0,0,0)",
 							pos: size2vec(win).div(2),
 							anchor: vec2(0.5,0.5),
-							size: size(30,30),
-							strokeColor: "#0f0",
+							alpha: 0.5,
+							lineWidth: 2,
+						});
+						ShieldHP.maxHp = 10;
+						ShieldHP.hp = 10;
+						
+						var Sparks = new Defender.Sparks({
+							name: "Sparks",
 						});
 						
-						Cursor.gameStats = GameStats;
+						var Planet = new RJ.Image({
+							name: "Planet",
+							image: planet,
+							pos: size2vec(win).div(2),
+							size: size(60,60),
+							anchor: vec2(0.5,0.5),
+						});
 						
-						BreakGui = new RJ.GameObject({
-							name: "BreakGUI",
+						Planet.addAction(
+							new RJ.Infinite(new RJ.RotateBy(12,-Math.PI/4))
+						);
+						
+						var Shield = new RJ.Oval({
+							name: "Shield",
+							radii: 60,
+							pos: size2vec(win).div(2),
+							fillColor: "rgba(0,0,0,0)",
+							anchor: vec2(0.5,0.5),
+							lineWidth: 1,
+						});
+						
+						var defender = new Defender.Tower({
+							name: "Tower",
+							image: tower,
+							pos: size2vec(win).div(2).add(vec2(0,-60)),
+							anchor: vec2(0.5,1),
+						});
+						
+						var bullets = new Defender.Bullets({
+							name: "Bullets",
+							pos: vecNull(),
 							size: win,
-						});
-						BreakGui.visible = false;
-						
-						var ImprovmentsRectangle = new RJ.Rectangle({
-							pos: vec2(0,win.h/2),
-							size: size(100,116),
-							anchor: vec2(0,0.5),
-							nameless: true,
+							fillColor: "#fff",
 						});
 						
-						// Towers
-						var TowersRectangle = new RJ.Rectangle({
-							pos: vec2(win.w,win.h/2),
-							size: size(34,104),
-							anchor: vec2(1,0.5),
-							nameless: true,
+						var Stars = new Defender.Stars({
+							name: "Stars",
+							fillColor: "#fff",
+							anchor: vec2(0.5,0.5),
+							pos: size2vec(Game.winSize()).div(2),
+							alpha: 0.3,
 						});
 						
-						SimpleTower = new Shooter.Button({
-							name: "SimpleTower",
-							pos: vec2(win.w-3,win.h/2+30),
-							anchor: vec2(1,0.5),
-							size: size(25,25),
-							text: "ST",
-							selector: function () {
-								if (GameStats.break && GameStats.money >= 50) {
-									GameStats.towerPlacing = true;
-									GameStats.tower = Shooter.Tower;
-									GameStats.towerCost = 50;
-								}
-							},
-							hover: function () {
-								if (GameStats.break) {
-									Tips.text = "Cost: $50";
-								}
-							},
+						meteors = new Defender.Meteors({
+							name: "Meteors",
+							image: meteor,
 						});
+						meteors.obstacle = new RJ.Circle(Shield.pos,Shield.radii);
+						meteors.bullets = bullets;
+						meteors.shield = ShieldHP;
+						meteors.sparks = Sparks;
+						meteors.planet = Planet;
 						
-						AdvancedTower = new Shooter.Button({
-							name: "AdvancedTower",
-							pos: vec2(win.w-3,win.h/2-30),
-							anchor: vec2(1,0.5),
-							size: size(25,25),
-							text: "AT",
-							selector: function () {
-								if (GameStats.break && GameStats.money >= 70) {
-									GameStats.towerPlacing = true;
-									GameStats.tower = Shooter.AdvancedTower;
-									GameStats.towerCost = 70;
-								}
-							},
-							hover: function () {
-								if (GameStats.break) {
-									Tips.text = "Cost: $70";
-								}
-							},
-						});
+						defender.bullets = bullets;
 						
-						SuperTower = new Shooter.Button({
-							name: "SuperTower",
-							pos: vec2(win.w-3,win.h/2),
-							anchor: vec2(1,0.5),
-							size: size(25,25),
-							text: "SS",
-							selector: function () {
-								if (GameStats.break && GameStats.money >= 100) {
-									GameStats.towerPlacing = true;
-									GameStats.tower = Shooter.SuperTower;
-									GameStats.towerCost = 100;
-								}
-							},
-							hover: function () {
-								if (GameStats.break) {
-									Tips.text = "Cost: $100";
-								}
-							},
-						});
-											
-						// Adding to gui
-						this.addChild(RectangleWave);
-						this.addChild(RectangleMoney);
-						this.addChild(RectangleEnemies);
-						
-						this.addChild(BreakGui);
-						BreakGui.addChild(ImprovmentsRectangle);
-						BreakGui.addChild(UpgradeSpeedButton);
-						BreakGui.addChild(UpgradeFireButton);
-						BreakGui.addChild(HealButton);
-						BreakGui.addChild(RectangleTips);
-						BreakGui.addChild(Tips);
-						BreakGui.addChild(TowersRectangle);
-						BreakGui.addChild(SimpleTower);
-						BreakGui.addChild(AdvancedTower);
-						BreakGui.addChild(SuperTower);
-					
+						this.addChild(Stars);
+						this.addChild(Sparks);
+						this.addChild(Shield);
+						this.addChild(ShieldHP);
+						this.addChild(Planet);
+						this.addChild(bullets);	
+						this.addChild(meteors);					
+						this.addChild(defender);
+						this.addChild(YouLoose);
 						this.addChild(WaveIndicator);
-						this.addChild(MoneyIndicator);
-						this.addChild(EnemyIndicator);
-					
-						this.addChild(StartButton);
-						this.addChild(Cursor);
-					
-						Game.keyboardHandler.addHandler(this);
-						Game.mouseHandler.addHandler(this);
+						this.addChild(Counter);
 					},
-					keyboardHandler: function (state, key) {
-						if (state == "up" && key == RJ.KeyBoard.space) {
-							if (gameScene.running == true) {
-								gameScene.pause();
+					update: function () {
+						if (meteors.count() == 0 && ShieldHP.hp > 0) {
+							wave ++;
+							WaveIndicator.text = "Wave "+wave;
+							
+							for (var i = 0; i < wave * 2; i++) {
+								var angle = (i/(wave*2)) * (Math.PI*2);
+								var distance = 400 + (i * 60);
+								var acc = 0.1 + (((wave/2) >> 0) * 0.1);
+								var pos = RJ.Vector.angleToVec(angle).scalar(distance).add(size2vec(Game.winSize()).div(2));
+								var vel = RJ.Vector.angleToVec(angle-Math.PI).scalar(acc + 0.5);
+								
+								meteors.add(pos,vel);
 							}
-							else {
-								gameScene.play();
-							}
-						}	
-					},
-					mouseHandler: function (state, vec) {
-						if (state == "click" && GameStats.towerPlacing 
-							&& (!SimpleTower.rect.containVec(vec) && !AdvancedTower.rect.containVec(vec) && !SuperTower.rect.containVec(vec)) 
-							&& GameStats.money >= GameStats.towerCost) {
-							var relativePos = vec.clone().sub(gameScene.pos);
-							var Grid = Game.get("Grid")
-							
-							var x = (relativePos.x / gameScene.get("Grid").blockSize.w) >> 0;
-							var y = (relativePos.y / gameScene.get("Grid").blockSize.h) >> 0;
-							
-							if (Grid.cells[x][y] == 1) {							
-								var tower = new GameStats.tower({
-									pos: vec2(x,y).scalar(Grid.blockSize.w).add(size2vec(Grid.blockSize).div(2)),
-									anchor: vec2(0.5,0.5),
-									size: size(20,20),
-									nameless: true,
-								});
-								Game.get("GameScene").addChild(tower);
-							
-								GameStats.money -= GameStats.towerCost;
-								GameStats.towerPlacing = false;
-								GameStats.tower = null;
+						}
+						else if(ShieldHP.hp <= 0) {
+							if (!YouLoose.visible) {
+								meteors.deleteAll();
+								this.game.get("Planet").addAction(new RJ.AlphaTo(1,0.5));
+								
+								YouLoose.visible = true;
+								YouLoose.addAction(new RJ.ScaleTo(1,size(0.1,0.1)));
+								YouLoose.addAction(new RJ.AlphaTo(1,1));
 							}
 						}
 					}
 				});
-				var gameScene = new RJ.Scene({
-					name: "GameScene",
-					enter: function () {
-						var Bullets = new Shooter.Bullets({
-							name: "Bullets",
-							fillColor: "#fff",
-							size: win,
-						});
-					
-						var Player = new Shooter.Player({
-							name: "Player",
-							size: size(15,15),
-							anchor: vec2(0.5,0.5),
-						});
-					
-						var Grid = new Shooter.Grid({
-							name: "Grid",
-							dimension: size(48,48),
-							blockSize: size(22,22),
-							strokeColor: "#444"
-						});
-						pathfinder = new Shooter.PathFinder(Grid.cells);
-					
-						Bullets.grid = Grid;
-					
-						var Zombies = new RJ.GameObject({
-							name: "Zombies",
-							pos: vec2(0,0),
-							size: win,
-							enter: function () {
-								generateZombies(GameStats.wave,this,Player);
-								this.timer = Game.rate * 3;
-							},
-							update: function () {
-								if (this.children.length == 0 && this.timer <= 0) {
-									if ((GameStats.wave+1) % 5 == 0) {
-										GameStats.break = true;
-										gui.get("WaveIndicator").text = "Break";
-										gui.get("StartButton").label = "Start";
-										BreakGui.visible = true;
-									}
-								}
-							
-								if (this.children.length == 0 && this.timer <= 0 && !GameStats.break) {
-									GameStats.wave ++;
-								
-									gui.get("StartButton").label = "Before break: "+(5-(GameStats.wave%5))+" waves";
-									gui.get("WaveIndicator").text = "Wave "+GameStats.wave;
-									generateZombies(GameStats.wave,this,Player);
-									this.timer = Game.rate * 3;
-								}
-								else if (this.children.length == 0 && this.timer > 0) {
-									this.timer--;
-								}
-							},
-						});
-					
-						var Towers = new RJ.GameObject({
-							name: "Towers",
-							size: win,
-						});
-					
-						this.addChild(Grid);
-						this.addChild(Bullets);
-						this.addChild(Zombies);
-						this.addChild(Towers);
-						this.addChild(Player);
-					},
-				});
-			
-				Game.addChild(gameScene);
-				Game.addChild(gui);
-				//Game.turnOnDebug()
-				//Game.showFPS();
-			})();
+				
+				Game.addChild(Scene);
+				Game.showFPS();
+ 			})();
 		</script>
 	</body>
 </html>
