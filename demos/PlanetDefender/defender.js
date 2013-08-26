@@ -1,6 +1,16 @@
 var Defender = {}; Defender.prototype = function Defender() {};
 
 (function () {
+	function Counter (obj) {
+		var score = 0;
+		
+		this.addScore = function () {
+			score ++;
+			this.text = "Killed "+score+" asteroids";
+		};
+		
+		RJ.inherit(this,Counter,RJ.Text,obj);
+	}
 	function Sparks(obj) {
 		obj.size = size(640,480); 
 		obj.pos = vecNull();
@@ -67,7 +77,6 @@ var Defender = {}; Defender.prototype = function Defender() {};
 					var part = this.particles[i];
 					
 					ctx.fillStyle = part.col;
-					ctx.strokeStyle = "#000";
 					ctx.lineWidth = 2;
 					
 					ctx.beginPath();
@@ -75,7 +84,6 @@ var Defender = {}; Defender.prototype = function Defender() {};
 					ctx.arc(part.pos.x,part.pos.y,part.rad,0,Math.PI*2,true);
 					
 					ctx.fill();
-					ctx.stroke();
 				}
 			}	
 		};
@@ -152,6 +160,16 @@ var Defender = {}; Defender.prototype = function Defender() {};
 		obj.pos = vecNull();
 		obj.size = size(640,480);
 		
+		this.deleteAll = function () {
+			for (var i = 0; i < meteors.length; i++) {
+				var met = meteors[i];
+				
+				this.sparks.addSparks(met.pos,20,met.radii);
+			}
+			
+			meteors = [];
+		};
+		
 		this.image = RJ.argDef(obj.image,null);
 		var ready = false;
 		this.image.onload = function () {
@@ -187,6 +205,10 @@ var Defender = {}; Defender.prototype = function Defender() {};
 		};
 		
 		this.update = function () {
+			if (!this.counter) {
+				this.counter = this.game.get("Counter");
+			}
+			
 			if (ready) {
 				if (meteors.length > 0) {
 					for (var i = 0; i < meteors.length; i++) {
@@ -206,6 +228,7 @@ var Defender = {}; Defender.prototype = function Defender() {};
 								if (met.hp == 0) {
 									this.delete(met.ind);
 									this.sparks.addSparks(met.pos,20,met.radii);
+									this.counter.addScore();
 								}
 							}
 						}
@@ -213,14 +236,17 @@ var Defender = {}; Defender.prototype = function Defender() {};
 						if (this.obstacle && this.obstacle.cVSc(met)) {
 							this.delete(met.ind);
 							this.sparks.addSparks(met.pos,20,met.radii);
+							this.counter.addScore();
 							
 							if (this.shield) {
-								this.shield.hp--;
-								this.shield.sColor = "hsl("+(this.shield.hp/this.shield.maxHp*120)+",100%,50%)";
-								this.shield.radii = 30 + (this.shield.hp/this.shield.maxHp) * 25;
-								this.shield.rect.w = this.shield.rect.h = this.shield.radii * 2;
+								if (this.shield.hp > -1) {
+									this.shield.hp--;
+									this.shield.sColor = "hsl("+(this.shield.hp/this.shield.maxHp*120)+",100%,50%)";
+									this.shield.radii = 30 + (this.shield.hp/this.shield.maxHp) * 25;
+									this.shield.rect.w = this.shield.rect.h = this.shield.radii * 2;
+								}
 								
-								if (this.planet) {
+								if (this.planet && this.planet.actions.length == 1) {
 									var actionTo = new RJ.ScaleBy(0.1,size(0.1,0.1));
 									var actionBack = new RJ.ScaleBy(0.1,size(-0.1,-0.1));
 									var actionSeq = new RJ.Sequence(actionTo,actionBack);
@@ -229,13 +255,11 @@ var Defender = {}; Defender.prototype = function Defender() {};
 								}
 								
 								if (this.shield.hp == 0) {
-									this.sparks.addSparks(size2vec(this.game.winSize()).div(2),300,40,true,5);
+									this.sparks.addSparks(size2vec(this.game.winSize()).div(2),300,50,true,5);
 									this.game.get("Tower").pause();
 									this.game.get("Stars").pause();
 									this.game.get("Planet").deleteAllActions();
 								}
-								
-								console.log(this.shield.hp);
 							}
 						}
 					}
@@ -349,6 +373,7 @@ var Defender = {}; Defender.prototype = function Defender() {};
 		RJ.inherit(this,Stars,RJ.GameObject,obj);
 	}
 	
+	Defender.Counter = Counter;
 	Defender.Sparks = Sparks;
 	Defender.Stars = Stars;
 	Defender.Tower = Tower;

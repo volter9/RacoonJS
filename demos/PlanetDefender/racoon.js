@@ -1823,21 +1823,23 @@ function size(w,h) {return new RJ.Size(w,h);}
 					   }
 	*/
 	var KeyBoard = {
-		bckspc: 8, // Backspace
-		enter: 13, // Enter
-		shift: 16, // Shift
-		ctrl:  17, // Control
-		alt:   18, // Alt
-		esc:   27, // Escape
-		space: 32, // Space
-		arr_l: 37, // Arrow Left
-		arr_u: 38, // Arrow Up
-		arr_r: 39, // Arrow Right
-		arr_d: 40, // Arrow Down
-		key_a: 65, // Key "A"
-		key_d: 68, // Key "D"
-		key_s: 83, // Key "S"
-		key_w: 87, // Key "W"
+		bckspc:    8, // Backspace
+		enter:     13, // Enter
+		shift:     16, // Shift
+		ctrl:      17, // Control
+		alt:       18, // Alt
+		esc:       27, // Escape
+		space:     32, // Space
+		arr_l:     37, // Arrow Left
+		arr_u:     38, // Arrow Up
+		arr_r:     39, // Arrow Right
+		arr_d:     40, // Arrow Down
+		key_a: 	   65, // Key "A"
+		key_d:     68, // Key "D"
+		key_s:     83, // Key "S"
+		key_w:     87, // Key "W"
+		command_l: 91, // Command Left
+		command_r: 93, // Command Right
 	}
 	
 	/*
@@ -1849,6 +1851,7 @@ function size(w,h) {return new RJ.Size(w,h);}
 			KeyBoardHandler.__instance = this;
 		
 			var handlers = {};
+			KeyBoardHandler.__instance.keys = [];
 			/*
 				- addHandler [var obj:GameObject] return nothing
 				* Description: adding handler (it usually obj.keyboardHandler)
@@ -1876,9 +1879,23 @@ function size(w,h) {return new RJ.Size(w,h);}
 				- handle [var obj:GameObject] return nothing
 				* Description: handling handlers
 			*/
-			KeyBoardHandler.__instance.handle = function (state, e) {			
+			KeyBoardHandler.__instance.handle = function (state, e) {
+				this.registerKey(state,e.keyCode);
+				if (this.keys[KeyBoard.ctrl]) {
+					e.preventDefault();
+				}
+				
 				for (var name in handlers) {
 					handlers[name].keyboardHandler(state, e.keyCode);
+				}
+			};
+			
+			KeyBoardHandler.__instance.registerKey = function (state,key) {
+				if (state == "down") {
+					this.keys[key] = true;
+				}
+				else {
+					this.keys[key] = false;
 				}
 			};
 		}

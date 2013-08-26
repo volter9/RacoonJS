@@ -92,7 +92,7 @@
 //			hc.style.display = "none";
 		</script>
 		<script>
-// 			(function () {
+ 			(function () {
 				var Game = new RJ.Game();
 				
 				Game.init({
@@ -103,13 +103,23 @@
 				var win = Game.winSize();
 				
 				var wave = 0;
-				var meteors, ShieldHP, YouLoose;
+				var meteors, ShieldHP, YouLoose, WaveIndicator;
 				var Scene = new RJ.Scene({
 					name: "MainScene",
 					enter: function () {
+						var Counter = new Defender.Counter({
+							name: "Counter",
+							text: "Killed 0 asteroids",
+							font: "Verdana",
+							fontSize: 14,
+							anchor: vec2(0.5,1),
+							pos: size2vec(win).sub(vec2(win.w/2,10)),
+							fillColor: "#fff",
+						});
+						
 						YouLoose = new RJ.Text({
 							name: "LooseText",
-							text: "YOU LOOSE!",
+							text: "YOU LOST!",
 							font: "Verdana",
 							fontSize: 320,
 							anchor: vec2(0.5,0.5),
@@ -118,6 +128,16 @@
 						});
 						YouLoose.visible = false;
 						YouLoose.opacity = 0;
+						
+	 					WaveIndicator = new RJ.Text({
+							name: "Waves",
+							text: "Wave 1",
+							font: "Verdana",
+							fontSize: 14,
+							anchor: vec2(0.5,0),
+							pos: vec2(win.w/2,10),
+							fillColor: "#fff",
+						});
 						
 						ShieldHP = new RJ.Oval({
 							name: "ShieldHP",
@@ -200,15 +220,18 @@
 						this.addChild(meteors);					
 						this.addChild(defender);
 						this.addChild(YouLoose);
+						this.addChild(WaveIndicator);
+						this.addChild(Counter);
 					},
 					update: function () {
 						if (meteors.count() == 0 && ShieldHP.hp > 0) {
 							wave ++;
+							WaveIndicator.text = "Wave "+wave;
 							
 							for (var i = 0; i < wave * 2; i++) {
 								var angle = (i/(wave*2)) * (Math.PI*2);
-								var distance = 400 + (Math.random() * 400);
-								var acc = 0.1 + ((wave / 2) >> 0) * 0.1;
+								var distance = 400 + (i * 60);
+								var acc = 0.1 + (((wave/2) >> 0) * 0.1);
 								var pos = RJ.Vector.angleToVec(angle).scalar(distance).add(size2vec(Game.winSize()).div(2));
 								var vel = RJ.Vector.angleToVec(angle-Math.PI).scalar(acc + 0.5);
 								
@@ -217,6 +240,9 @@
 						}
 						else if(ShieldHP.hp <= 0) {
 							if (!YouLoose.visible) {
+								meteors.deleteAll();
+								this.game.get("Planet").addAction(new RJ.AlphaTo(1,0.5));
+								
 								YouLoose.visible = true;
 								YouLoose.addAction(new RJ.ScaleTo(1,size(0.1,0.1)));
 								YouLoose.addAction(new RJ.AlphaTo(1,1));
@@ -225,10 +251,9 @@
 					}
 				});
 				
-				
 				Game.addChild(Scene);
 				Game.showFPS();
-// 			})();
+ 			})();
 		</script>
 	</body>
 </html>
