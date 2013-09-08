@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Destroyer - RacoonJS</title>
+		<meta charset="UTF-8" />
+		<style>
+			h1,h2,h3 {
+				font-weight: 100;
+				margin: 10px 0px;
+			}
+			
+			body {
+				margin: 0px;
+				padding: 0px;
+				overflow: hidden;
+				background-color: #000;
+			}
+			
+			#cont {
+				display: block;
+				width: 640px;
+				height:480px;
+				border: 1px solid #fff;
+				margin: 0px auto;
+			}
+			
+			#logo {
+				width: 320px;
+				margin: 0px auto;
+			}
+			
+			#desc {
+				width: 480px;
+				color: #fff;
+				font-family: "Courier";
+				font-size: 14px;
+				margin: 0px auto;
+			}
+			
+			#desc p {
+				text-indent: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="logo">
+			<img src="./destroyer.png" />
+		</div>
+		<div id="cont">
+			<canvas id="c"></canvas>
+		</div>
+		<div id="desc">
+			<h1>Управление:</h1>
+			<p>Меню: стрелочки - переключатся между пунктами, enter - выбрать пункт.</p>
+			<p>В игре: стрелочки - управлять космическим кораблем, space - стрелять или пропустить просмотр карты.</p>
+		</div>
+		<script src="racoon.js"></script>
+		<script src="destroyer.js"></script>
+		<script>
+ 			(function () {
+				if (!localStorage.coins) {
+					localStorage.coins = 0;
+					DE.game.coins = 0;
+				}
+			
+				if (!localStorage.shop) {
+					localStorage.shop = JSON.stringify([true,false,false,false]);
+				}
+			
+				if (!localStorage.ship) {
+					localStorage.ship = 0;
+				} 
+			
+				var Game = new RJ.Game();
+				var ne = new Image();
+				var dne = new Image();
+				var sne = new Image();
+				var mne = new Image();
+			
+				var uf = new Image();
+				var sp = new Image();
+			
+				ne.src = "./ne.png";
+				dne.src = "./dne.png"
+				sne.src = "./sne.png";
+				mne.src = "./mne.png";
+			
+				uf.src = "./ufo.png";
+				sp.src = "./destroyer.png";
+			
+				DE.SetShip(0,ne);
+				DE.SetShip(1,dne);
+				DE.SetShip(2,sne);
+				DE.SetShip(3,mne);
+				DE.SetCurrentShip(localStorage.ship);
+				DE.SetLevel(0);
+			
+				Game.init({
+					canvas: "c",
+					rate: 60,
+					size: size(640,480),
+				});
+			
+				var win = Game.winSize();
+				var Coin = new RJ.GameObject({
+					name: "CoinGUI",
+					pos: vec2(win.w - 20,win.h - 20),
+					size: size(20,20),
+					fillColor: "#000",
+					strokeColor: "#fff",
+					anchor: vec2(0.5,0.5),
+					render: function (ctx) {
+						ctx.beginPath();
+					
+						ctx.arc (10,10,10,0,Math.PI*2,0);
+					
+						ctx.fill();
+						ctx.stroke();
+					
+						ctx.strokeRect(10-3,10-5,6,10);
+					
+						this.sin += 0.05;
+						this.scale.w = Math.sin(this.sin);
+					}
+				});
+				Coin.sin = 0;
+			
+				var CoinI = new RJ.Text({
+					name: "CoinI",
+					pos: vec2(win.w - 40,win.h - 20),
+					anchor: vec2(1,0.5),
+					text: "0",
+					fontSize: 14,
+					font: "Verdana",
+					fillColor: "#fff"
+				});
+			
+				var MenuScene = new RJ.Scene({
+					name: "MenuScene",
+					enter: function () {
+						var Stars = new DE.MenuStars();
+						var Destro = new RJ.Image({
+							nameless: true,
+							image: sp,
+							pos: vec2(win.w/2,win.h/2 - 125),
+							anchor: vec2(0.5,0.5),
+							size: size(320,100),
+							update: function () {
+								var sin = this.sin;
+								this.sin += 0.025;
+								//console.log(this.sin-sin);
+							
+								this.angle = Math.cos(this.sin)/4;
+								this.scale.h = 1 + Math.sin(this.sin) / 4;
+								this.scale.w = 1 + Math.sin(this.sin) / 4;
+							},
+						});
+						Destro.sin = Math.random() * Math.PI * 2;
+					
+						var Version = new RJ.Text({
+							nameless: true,
+							font: "Helvetica",
+							fontSize: 10,
+							text: "От Volter9 v1.0\nСпециально для GameDev.ru",
+							align: "right",
+							pos: vec2(320,100),
+							anchor: vec2(1,0),
+							fillColor: "#fff",
+						});
+					
+						var coins = parseInt(DE.game.coins);
+						var Coines = new RJ.Text({
+							nameless: true,
+							font: "Helvetica",
+							fontSize: 14,
+							text: "У вас "+coins+" монет",
+							update: function () {
+								var value = DE.game.coins;
+							
+								if (this.text != "У вас "+value+" монет") {
+									this.text = "У вас "+value+" монет";
+								}
+							},
+							pos: vec2(5,win.h-10),
+							anchor: vec2(0,1),
+							fillColor: "#fff",
+						});
+					
+						var AboutMenu,Menu,ShopMenu,LevelMenu;
+						Menu = new DE.Menu({
+							name: "Menu",
+							entries: ["Начать Игру","Космический Магазин","О Проекте"],
+							callback: function (index) {
+								if (index == 0) {
+									Menu.removeFromParent();
+									MenuScene.addChild(LevelMenu);
+								}
+								else if (index == 1) {
+									Menu.removeFromParent();
+									MenuScene.addChild(ShopMenu);
+								}
+								else {
+									Menu.removeFromParent();
+									About.opacity = 0.75;
+									MenuScene.addChild(AboutMenu);
+								}
+							},
+							pos: size2vec(win).scalar(0.5).add(vec2(0,100)),
+							size: size(200,100),
+							anchor: vec2(0.5,0.5),
+						});
+					
+						LevelMenu = new DE.Menu({
+							name: "Menu",
+							entries: [],
+							callback: function (index) {
+								if (index < LevelMenu.entries.length - 1) {
+									DE.SetLevel(index);
+									Game.addChild(GameScene);
+									Game.addChild(Coin);
+									Game.addChild(CoinI);
+								
+									MenuScene.removeFromParent();
+								}
+								else {
+									LevelMenu.removeFromParent();
+									MenuScene.addChild(Menu);
+								}
+							},
+							pos: size2vec(win).scalar(0.5).add(vec2(0,100)),
+							size: size(200,200),
+							anchor: vec2(0.5,0.5),
+						});
+					
+						var levels = [];
+						for (var i = 0; i < DE.levels.length; i++) {
+							levels.push("Уровень "+(i+1));
+						}
+						levels.push("Обратно");
+						LevelMenu.entries = levels;
+					
+						ShopMenu = new DE.Menu({
+							name: "ShopMenu",
+							ship: true,
+							callback: function (index) {
+								if (index <= 3) {
+									var boughts = JSON.parse(localStorage.shop);
+									if (boughts[index]) {
+										DE.SetCurrentShip(index);
+										localStorage.ship = index;
+									}
+									else {
+										if (parseInt(localStorage.coins) >= DE.ships[index].price) {
+											var boughts = JSON.parse(localStorage.shop);
+											boughts[index] = true;
+											localStorage.shop = JSON.stringify(boughts);
+										
+											DE.SetCurrentShip(index);
+											localStorage.ship = index;
+										
+											localStorage.coins = parseInt(localStorage.coins) - DE.ships[index].price;
+											DE.game.coins = parseInt(DE.game.coins) - DE.ships[index].price;
+										}
+									}
+								}
+								else {
+									MenuScene.addChild(Menu);
+									ShopMenu.removeFromParent();
+								}
+							},
+							enter: function (self) {
+								self.addChild(new RJ.Image({
+									nameless: true,
+									pos: vec2(200,-25),
+									size: size(40,40),
+									image: ne,
+								}));
+								self.addChild(new RJ.Image({
+									nameless: true,
+									pos: vec2(200,15),
+									size: size(40,40),
+									image: dne
+								}));
+								self.addChild(new RJ.Text({
+									nameless: true,
+									pos: vec2(255,35),
+									text: "Цена: $100",
+									font: "Courier",
+									anchor: vec2(0,0.5),
+									fontSize: 14,
+									fillColor: "#fff",
+								}));
+								self.addChild(new RJ.Image({
+									nameless: true,
+									pos: vec2(200,57),
+									size: size(40,40),
+									image: sne
+								}));
+								self.addChild(new RJ.Text({
+									nameless: true,
+									pos: vec2(255,77),
+									text: "Цена: $500",
+									font: "Courier",
+									anchor: vec2(0,0.5),
+									fontSize: 14,
+									fillColor: "#fff",
+								}));
+								self.addChild(new RJ.Image({
+									nameless: true,
+									pos: vec2(200,100),
+									size: size(40,40),
+									image: mne
+								}));
+								self.addChild(new RJ.Text({
+									nameless: true,
+									pos: vec2(255,120),
+									text: "Цена: $1000",
+									font: "Courier",
+									anchor: vec2(0,0.5),
+									fontSize: 14,
+									fillColor: "#fff",
+								}));
+							},
+							pos: size2vec(win).scalar(0.5).add(vec2(-50,130)),
+							size: size(200,160),
+							anchor: vec2(0.5,0.5),
+						});					
+					
+						var entries = [];
+						for (var i = 0; i < DE.ships.length; i++) {
+							entries.push(DE.ships[i].name);
+						}
+						entries.push("Обратно");
+						ShopMenu.entries = entries;
+					
+						AboutMenu = new DE.Menu({
+							name: "AboutMenu",
+							entries: ["Обратно"],
+							callback: function (index) {
+								AboutMenu.removeFromParent();
+								About.opacity = 0;
+								MenuScene.addChild(Menu);
+							},
+							pos: size2vec(win).scalar(0.5).add(vec2(0,220)),
+							size: size(200,20),
+							anchor: vec2(0.5,0.5),
+						});
+					
+						var About = new RJ.Text({
+							nameless: true,
+							font: "Courier",
+							fontSize: 14,
+							text: "Эксперементальная игра, сделанная для конкурса на GameDev.ru\n(Советую играть в Chrome или Safari)\n\nhttp://www.gamedev.ru/flame/forum/?id=179576\n\nОт Volter9, сделанно на игровом движке RacoonJS\n\nПриятной Игры!",
+							align: "center",
+							pos: size2vec(win).scalar(0.5).add(vec2(0,100)),
+							anchor: vec2(0.5,0.5),
+							fillColor: "#fff",
+						});
+						About.opacity = 0;
+						About.running = false;
+										
+						this.addChild(Stars);
+						this.addChild(Destro);
+						this.addChild(Menu);
+						this.addChild(About);
+						this.addChild(Coines);
+					
+						Destro.addChild(Version);
+					},
+					exit: function () {
+						this.removeAllChildren();
+					}
+				});
+				Game.menu = MenuScene;
+				Game.coin = [Coin,CoinI];
+			
+				var GameScene = new RJ.Scene({
+					name: "GameScene",
+					exit: function () {
+						this.removeAllChildren();
+					},
+					enter: function () {
+						var Starship = new DE.Starship({
+							pos: vec2(win.w/2,win.h/2),
+						});
+					
+						Starship.coin = CoinI;
+					
+						var Lighting = new DE.Lighting({
+							name: "Lighting",
+							pos: size2vec(win).div(2).add(vec2(0,win.h/2.5)),
+							anchor: vec2(0.5,0.5),
+							acceleration: DE.level.maxAcc,
+						});
+					
+						var Bullets = new DE.Bullets({
+							name: "Bullets",
+							size: win,
+							pos: vecNull(),
+							fillColor: "#fff",
+						});
+					
+						var EnemyBullets = new DE.EnemyBullets({
+							name: "EnemyBullets",
+							size: win,
+							pos: vecNull(),
+							fillColor: "#fff",
+						});
+					
+						var Coins = new DE.Coins({
+							name: "Coins",
+							size: win,
+							pos: vecNull(),
+						});
+					
+						var Camera = new DE.Camera({
+							follow: Starship,
+							follower: GameScene,
+							level: DE.level.size,
+						});
+					
+						var SpaceSaucers = new DE.SpaceSaucers({
+							name: "SpaceSaucers",
+							pos: vecNull(),
+							size: win,
+							image: uf,
+							difficulty: DE.level.level,
+						});
+					
+						var Sparks = new DE.Sparks({
+							name: "Sparks",
+						});
+					
+						var Towers = new DE.Towers({
+							name: "Towers",
+							difficulty: DE.level.level,
+						});
+					
+						var times = (Camera.levelSize.h-480)/480
+						for (var i = 0; i < times; i++) {
+							var randCount = 2 + ((Math.random() * (1+DE.level.variance)) >> 0);
+						
+							for (var d = 0; d < randCount; d++) {
+								var x = 0;
+								var y = -win.h/2 - i * win.h;
+							
+								if (randCount == 1) {
+									x = win.w/2;
+								}
+								else {
+									x = win.w/4 + d * (win.w/2/(randCount-1));
+								}
+							
+								var pos = vec2(x,y);
+							
+								if (i < times-1) {
+									for (var j = 0; j < DE.level.coins; j++) {
+										var rand = Math.floor(Math.random() * 1.2);
+										Coins.add(pos.clone().add(vec2(0,-win.h/4+win.h/8 - j * 30)),rand);
+									}
+								}
+								SpaceSaucers.add(pos);
+							}
+						}
+					
+						var Walls = new DE.Walls({name: "Walls"});
+					
+						SpaceSaucers.sparks = Sparks;
+						SpaceSaucers.lighting = Lighting;
+						SpaceSaucers.player = Starship;
+						SpaceSaucers.bullets = Bullets;
+						SpaceSaucers.myBullets = EnemyBullets;
+					
+						Coins.camera = Camera;
+						Coins.lighting = Lighting;
+						Coins.sparks = Sparks;
+						SpaceSaucers.coins = Coins;
+						
+						Walls.sparks = Sparks;
+						Walls.lighting = Lighting;
+						Walls.bullets = Bullets;
+						Walls.enemyBullets = EnemyBullets;
+					
+						Towers.sparks = Sparks;
+						Towers.lighting = Lighting;
+						Towers.player = Starship;
+						Towers.myBullets = EnemyBullets;
+					
+						Starship.sparks = Sparks;
+						Starship.lighting = Lighting;
+					
+						var timeout = null;
+						var EndPoint = new RJ.Oval({
+							name: "EndPoint",
+							pos: vec2(win.w/2,-Camera.levelSize.h+win.h*1.25),
+							radii: 60,
+							strokeColor: "#fff",
+							lineWidth: 4,
+							fillColor: "rgba(0,255,255,0.25)",
+							anchor: vec2(0.5,0.5),
+							update: function () {
+								if (!this.rect.aabb(this.camera.rect)) {
+									this.visual = false;
+								}
+								else {
+									this.visual = true;
+								}
+							
+								if (Starship.rect.aabb(this.rect) && timeout == null) {
+									Sparks.addSparks(Starship.pos,10,20);
+									timeout = setTimeout(function () {
+										Game.addChild(MenuScene);
+										GameScene.removeFromParent();
+										DE.game.started = false;
+										
+										var score = Starship.score + parseInt(localStorage.coins);
+										localStorage.coins = score;
+										DE.game.coins = score;
+									
+										Coin.removeFromParent();
+										CoinI.removeFromParent();
+										CoinI.text = 0;
+									},250);
+								}
+							
+								if (timeout) {
+									Starship.setPos(this.pos);
+								}
+							}
+						});
+					
+						var Stars = new DE.Stars({
+							alpha: 0.75,
+						});
+					
+						for (var i = 0; i < times; i++) {
+							Walls.add(0 + i * -win.h, 10 + i * 2);
+						}
+					
+						Starship.walls = Walls;
+						Starship.enemyBullets = EnemyBullets;
+						Starship.coins = Coins;
+					
+						EndPoint.camera = Camera;
+						Stars.camera = Camera;
+						Lighting.camera = Camera;
+						Bullets.camera = Camera;
+						EnemyBullets.camera = Camera;
+						SpaceSaucers.camera = Camera;
+						Sparks.camera = Camera;
+						Towers.camera = Camera;
+						Walls.camera = Camera;
+						Camera.visual = false;
+					
+						for (var i = 0; i < times * 2; i++) {
+							var pos = vec2(win.w/8 + win.w/(4/3) * (i%2),-win.h/2 - ((i/2)>>0) * win.h);
+							Towers.add(pos);
+						}
+					
+						Starship.bullets = Bullets;
+					
+						this.addChild(Camera);
+						this.addChild(Stars);
+						this.addChild(Coins);
+						this.addChild(Sparks);
+						this.addChild(EndPoint);
+						this.addChild(EnemyBullets);
+						this.addChild(Bullets);
+						this.addChild(Towers);
+						this.addChild(SpaceSaucers);
+						this.addChild(Starship);					
+						this.addChild(Lighting);
+						this.addChild(Walls);
+					},
+				});
+			
+				//Game.showFPS();
+				Game.addChild(MenuScene);
+				//Game.turnOnDebug();
+ 			})();
+		</script>
+	</body>
+</html>
