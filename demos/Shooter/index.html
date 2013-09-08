@@ -4,18 +4,22 @@
 		<meta charset="UTF-8" />
 		<title>Shooter - RacoonJS</title>
 		<style>
-			div#cont {
-				margin: 0px auto;
-				display:block;
+			body {
+				background-color: #000;
+				overflow: hidden;
+			}
+			
+			canvas {
 				width: 640px;
 				height: 480px;
+				margin: 0px auto;
+				display: block;
+				border: 1px solid #fff;
 			}
 		</style>
 	</head>
 	<body>
-		<div id="cont">
-			<canvas id="c" style="cursor: none;"></canvas>
-		</div>
+		<canvas id="c" style="cursor: none;"></canvas>
 		<script type="text/javascript" src="racoon.js"></script>
 		<script type="text/javascript" src="shooter.js"></script>
 		<script type="text/javascript">
