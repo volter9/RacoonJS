@@ -18,6 +18,8 @@
 				gui.src = './img/gui.png';
 				var decor = new Image();
 				decor.src = './img/decor.png';
+				var sky = new Image();
+				sky.src = './img/sky.png';
 				
 				var Game = new RJ.Game();
 				var winSize = null;
@@ -66,6 +68,13 @@
 							image: decor,
 						});
 						
+						var skie = new SV.Sky({
+							name: "Sky",
+							pos: vec2(1344,64),
+							image: sky,
+							size: size(128,196),
+						});
+						
 						var player =  new SV.Player({
 							name: "Player",
 							pos: vec2(288,354),
@@ -74,6 +83,7 @@
 						});
 						decors.player = player;
 						
+						this.addChild(skie);
 						this.addChild(level);
 						this.addChild(decors);
 						this.addChild(player);
@@ -83,7 +93,7 @@
 				Game.addChild(GameScene);
 				Game.addChild(GUI);
 				//Game.turnOnDebug();
-				//Game.showFPS();
+				Game.showFPS();
 			})();
 		</script>
 	</body>

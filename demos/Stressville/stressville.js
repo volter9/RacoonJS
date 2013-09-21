@@ -16,7 +16,7 @@ var SV = {}; SV.constructor = function SV() {};
 					
 					if (vec.x > node.pos.x && vec.y > node.pos.y &&
 						vec.x < node.pos.x + node.size.w * 4 && vec.y < node.pos.y + node.size.h * 4) {
-						if (this.player.pos.distance(node.pos.clone().add(vec2(node.size.w*2,node.size.h*2))) < 300 * 300) {
+						if (this.player.pos.distance(node.pos.clone().add(vec2(node.size.w*2,node.size.h*2))) < 300 * 300 && this.player.isBusy()) {
 							node.call();
 						}
 					}
@@ -35,8 +35,11 @@ var SV = {}; SV.constructor = function SV() {};
 				size: size(16,32),
 				used: 2,
 				call: function () {
-					if (this.used > 0) {
-						self.player.stress += 10;
+					if (this.used > 0 && self.player.tilePos().isEqual(vec2(0,1)) && self.player.isBusy() && !self.player.path) {
+						self.player.rest = true;
+						self.player.ind = 4;
+						
+						self.player.stress += 15;
 						this.used --;
 					}
 				}
@@ -186,6 +189,7 @@ var SV = {}; SV.constructor = function SV() {};
 			});
 			
 			// Living room
+			// Bed
 			this.add({
 				name: "Bed",
 				pos: vec2(768,192),
@@ -193,8 +197,14 @@ var SV = {}; SV.constructor = function SV() {};
 				size: size(32,32),
 				used: 3,
 				call: function () {
-					if (this.used > 0) {
-						self.player.stress += 20;
+					if (this.used > 0 && self.player.isBusy() && !self.player.path) {
+						self.player.ind = 4;
+						self.player.sleeping = true;
+						self.player.lastTilePos = vec2(13,1);
+						self.player.angle = 3 * Math.PI / 2;
+						self.player.setPos(this.pos.clone().add(vec2(76,64)));
+						self.player.anchor.y = 0.5;
+						
 						this.used --;
 					}
 				},
@@ -207,16 +217,15 @@ var SV = {}; SV.constructor = function SV() {};
 				size: size(32,32),
 				used: 3,
 				call: function () {
-					if (this.used > 0) {
-						var rand = Math.random() * 2;
-						if (rand > 0.5) {
-							self.player.stress += 20;
-						}
-						else {
-							self.player.stress -= 10;
-						}
+					if (this.used > 0 && self.player.isBusy() && !self.player.path) {
+						var tilePos = self.player.tilePos();
 						
-						this.used --;
+						if (tilePos.isEqual(vec2(16,1)) || tilePos.isEqual(vec2(15,1))) {
+							self.player.computing = true;
+							self.player.ind = 4;
+						
+							this.used --;
+						}
 					}
 				},
 			});
@@ -247,6 +256,10 @@ var SV = {}; SV.constructor = function SV() {};
 	function Player(obj) {
 		obj.size = size(64,128);
 		
+		this.isBusy = function () {
+			return (!this.sleeping && !this.rest && !this.computing);
+		};
+		
 		this.timer = 10800;
 		this.tilePos = function () {
 			var pos = this.pos.clone().sub(vec2(0,256));
@@ -256,6 +269,23 @@ var SV = {}; SV.constructor = function SV() {};
 			
 			return pos;
 		};
+		
+		// Computer
+		this.computing = false;
+		this.compTime = 600;
+		this.compTimer = this.compTime;
+		this.compDir = 1;
+		
+		// Restroom stuff
+		this.rest = false;
+		this.restTime = 240;
+		this.restTimer = this.restTime;
+		
+		// Sleep stuff
+		this.sleeping = false;
+		this.sleepTime = 300;
+		this.sleepTimer = this.sleepTime;
+		this.lastTilePos = vecNull();
 		
 		// Utility functions
 		this.stress = -10;
@@ -279,7 +309,7 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		// Mouse
 		this.mouseHandler = function (state, vec) {
-			if (state == 'click') {
+			if (state == 'click' && this.isBusy()) {
 				if (vec.y >= 256 && vec.y <= 448) {
 					vec.sub(vec2(0,256));
 					vec.sub(this.parent.pos);
@@ -322,11 +352,62 @@ var SV = {}; SV.constructor = function SV() {};
 			}
 		};
 		
+		this.win = function () {
+			
+		};
+		
 		this.update = function () {
+			if (this.computing) {
+				this.compTimer --;
+				
+				var rand = Math.random() * 5;
+				
+				if (rand < 0.05) {
+					this.compDir *= -1;
+				}
+				
+				this.stress += this.compDir * 0.2;
+				
+				if (this.compTimer == 0) {
+					this.ind = 0;
+					this.computing = false;
+					this.compTimer = this.compTime
+					this.compDir = 1;
+				}
+			}
+			
+			if (this.rest) {
+				this.restTimer --;
+				
+				if (this.restTimer == 0) {
+					this.rest = false;
+					this.restTimer = this.restTime;
+					
+					this.ind = 0;
+				}
+			}
+			
+			if (this.sleeping) {
+				this.sleepTimer --;
+				
+				this.stress += 30 / this.sleepTime
+				
+				if (this.sleepTimer == 0) {
+					this.sleeping = false;
+					this.sleepTimer = this.sleepTime;
+					
+					this.anchor.y = 1;
+					this.setPos(this.lastTilePos.clone().scalar(64).add(vec2(32,288)));
+					this.lastTilePos = vecNull();
+					this.angle = 0;
+					this.ind = 0;
+				}
+			}
+			
 			if (this.timer > 0) {
 				this.timer -= 2;
 				
-				if ((this.timer % 600) < 4) {
+				if ((this.timer % 600) <= 2) {
 					this.stress --;
 				}
 			}
@@ -345,11 +426,15 @@ var SV = {}; SV.constructor = function SV() {};
 			}
 			
 			if (this.suicidic) {
-				if (this.path == null && !this.tilePos().isEqual(vec2(4,0))) {
+				if (!this.tilePos().isEqual(vec2(4,0))) {
+					this.computing = false;
+					this.rest = false;
+					this.sleeping = false;
+					
 					this.path = this.pathFinder.findPath(this.tilePos(),vec2(4,0));
 					this.run = true;
 				}
-				else if (this.tilePos().isEqual(vec2(4,0))) {
+				else if (this.tilePos().isEqual(vec2(4,0)) && !this.path) {
 					this.game.get('GUI').removeFromParent();
 					this.parent.removeFromParent();
 				}
@@ -358,8 +443,6 @@ var SV = {}; SV.constructor = function SV() {};
 			if (this.stress < this.maxStressed + 1) {
 				this.suicide();
 			}
-			
-			
 			
 			if (this.path) {
 				var destPos = {x:32+this.path[this.index].x*64,y:32+this.path[this.index].y*64};
@@ -394,7 +477,7 @@ var SV = {}; SV.constructor = function SV() {};
 				}
 			}
 			
-			if (this.time > this.dur) {
+			if (this.time > this.dur && this.isBusy()) {
 				if (this.run) {
 					if (this.sin == 0) {
 						this.ind = 3;
@@ -480,8 +563,6 @@ var SV = {}; SV.constructor = function SV() {};
 			this.map[13][0] = 1;
 			this.map[15][0] = 1;
 			this.map[16][0] = 1;
-			this.map[15][1] = 1;
-			this.map[16][1] = 1;
 			this.map[18][0] = 1;
 			this.map[19][0] = 1;
 			
@@ -680,10 +761,55 @@ var SV = {}; SV.constructor = function SV() {};
 		this.init();
 	};
 	
+	function Sky(obj) {
+		this.stars = [];
+		this.image = RJ.argDef(obj.image,null);
+		
+		this.onEnter = function () {
+			for (var i = 0; i < 10; i++) {
+				this.stars.push({
+					pos: vec2((Math.random() * 128) >> 0,(Math.random() * 64) >> 0),
+					dir: (Math.random() < 0.5) ? 0.1 * Math.random() : -0.1 * Math.random(),
+					size: 2 + ((Math.random() * 4) >> 0),
+				});
+			}
+			
+			this.pColor = "#fff";
+		};
+		
+		this.render = function (ctx) {
+			ctx.drawImage(this.image,0,0,this.rect.w,this.rect.h);
+			
+			for (var i = 0; i < this.stars.length; i++) {
+				var star = this.stars[i];
+				
+				ctx.fillRect(star.pos.x,star.pos.y,star.size,star.size);
+			}
+		};
+		
+		this.update = function () {
+			for (var i = 0; i < this.stars.length; i++) {
+				var star = this.stars[i];
+				
+				star.pos.x += star.dir;
+				
+				if (star.pos.x < 0-star.size) {
+					star.pos.x = 128+star.size;
+				}
+				else if (star.pos.x > 128+star.size) {
+					star.pos.x = -star.size;
+				}
+			}
+		}
+		
+		RJ.inherit(this,Sky,RJ.GameObject,obj);
+	}
+	
 	SV.Decorations = Decorations;
 	SV.Player = Player;
 	SV.Level = Level;
 	SV.PathFinder = PathFinder;
 	SV.Stressbar = Stressbar;
 	SV.Timebar = Timebar;
+	SV.Sky = Sky;
 })();
