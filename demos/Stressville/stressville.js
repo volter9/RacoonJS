@@ -1,11 +1,52 @@
 var SV = {}; SV.constructor = function SV() {};
 
 (function () {
+	// Classes
+	function Blood(obj) {
+		this.generate = function (pos,count) {
+			for (var i = 0; i < count; i++) {
+				this.add({
+					pos: pos.clone().add(vec2(0,25 - Math.random() * 50)),
+					size: 2 + (Math.random() * 6) >> 0,
+					alpha: 0.8 + Math.random() * 0.2,
+				});
+			}
+		}
+		
+		this.delete = function (ind) {
+			RJ.super(this).delete(ind);
+		};
+		
+		this.nodeUpdate = function (node) {
+			node.alpha -= 0.01;
+			
+			if (node.alpha < 0.05) {
+				this.delete(node.index);
+			}
+		};
+		
+		this.nodeRender = function (node,ctx) {
+			ctx.fillStyle = "#f00";
+			ctx.globalAlpha = node.alpha;
+			ctx.fillRect(node.pos.x,node.pos.y,node.size,node.size);
+			ctx.globalAlpha = 1;
+		};
+		
+		RJ.inherit(this,Blood,RJ.NodedElement,obj);
+	}
 	function Decorations(obj) {
 		obj = (obj) ? obj : {};
-		obj.name = "";
+		obj.name = "Decors";
 		obj.pos = vecNull();
 		obj.size = size(0,0);
+		
+		this.renderAABB = function (ctx) {
+			for (var i = 0; i < this.nodes.length; i++) {
+				var item = this.nodes[i];
+				
+				ctx.strokeRect(item.pos.x,item.pos.y,item.size.w * 4, item.size.h * 4);
+			}
+		};
 		
 		this.image = RJ.argDef(obj.image,null);
 		this.mouseHandler = function (state,vec) {
@@ -16,7 +57,8 @@ var SV = {}; SV.constructor = function SV() {};
 					
 					if (vec.x > node.pos.x && vec.y > node.pos.y &&
 						vec.x < node.pos.x + node.size.w * 4 && vec.y < node.pos.y + node.size.h * 4) {
-						if (this.player.pos.distance(node.pos.clone().add(vec2(node.size.w*2,node.size.h*2))) < 300 * 300 && this.player.isBusy()) {
+						if (this.player.pos.distance(node.pos.clone().add(vec2(node.size.w*2,node.size.h*2))) < 300 * 300 &&
+							this.player.isBusy() && !this.player.path && !this.player.suicidic) {
 							node.call();
 						}
 					}
@@ -25,6 +67,9 @@ var SV = {}; SV.constructor = function SV() {};
 		};
 		
 		var self = this;
+		this.onExit = function () {
+			this.game.mouseHandler.removeHandler(this);
+		};
 		this.onEnter = function () {
 			// Restroom
 			// Toilet
@@ -39,7 +84,6 @@ var SV = {}; SV.constructor = function SV() {};
 						self.player.rest = true;
 						self.player.ind = 4;
 						
-						self.player.stress += 15;
 						this.used --;
 					}
 				}
@@ -99,13 +143,23 @@ var SV = {}; SV.constructor = function SV() {};
 				used: 1,
 				call: function () {
 					if (this.open > 0) {
-						this.clip = vec2(144,0);
+						if (this.used > 0) {
+							this.clip = vec2(144,0);
+						}
+						else {
+							this.clip = vec2(112,0);
+						}
 						this.open --;
 					}
 					else if (this.used > 0) {
 						this.clip = vec2(112,0);
 						self.player.stress += 25;
 						this.used --;
+						self.player.ind = 4;
+					}
+					else {
+						this.clip = vec2(48,0);
+						this.open ++;
 					}
 				}
 			});
@@ -123,9 +177,9 @@ var SV = {}; SV.constructor = function SV() {};
 						this.clip = vec2(128,16);
 						this.open --;
 					}
-					else if (this.used > 0) {
+					else if (this.used > 0 && self.player.stress < 0) {
 						this.clip = vec2(32,32);
-						self.player.suicide();
+						self.player.suicide('gun');
 						this.used --;
 					}
 				}
@@ -142,9 +196,9 @@ var SV = {}; SV.constructor = function SV() {};
 						this.clip = vec2(128,32);
 						this.open --;
 					}
-					else if (this.used > 0) {
+					else if (this.used > 0 && self.player.stress < 0) {
 						this.clip = vec2(32,32);
-						self.player.suicide();
+						self.player.suicide('knife');
 						this.used --;
 					}
 				},
@@ -162,20 +216,33 @@ var SV = {}; SV.constructor = function SV() {};
 			// Lower shelves
 			this.add({
 				name: "Lower left shelf",
-				pos: vec2(512,160),
-				clip: vec2(0,48),
-				size: size(16,32),
+				pos: vec2(512,208),
+				clip: vec2(0,60),
+				size: size(16,20),
 				call: function () {
 					
 				}
 			});
 			this.add({
 				name: "Lower middle shelf",
-				pos: vec2(576,160),
-				clip: vec2(16,48),
-				size: size(16,32),
+				clip: vec2(16,60),
+				pos: vec2(576,208),
+				size: size(16,20),
+				open: 1,
 				call: function () {
-					
+					if (this.open > 0) {
+						this.clip = vec2(128,60);
+						self.player.time = 0;
+						self.player.ind = 5;
+						self.player.stress -= 40;
+						
+						this.open --;
+					}
+					else {
+						this.clip = vec2(16,60);
+						
+						this.open ++;
+					}
 				}
 			});
 			this.add({
@@ -198,11 +265,11 @@ var SV = {}; SV.constructor = function SV() {};
 				used: 3,
 				call: function () {
 					if (this.used > 0 && self.player.isBusy() && !self.player.path) {
-						self.player.ind = 4;
+						self.player.ind = (Math.random() < 0.5) ? 1 : 4;
 						self.player.sleeping = true;
 						self.player.lastTilePos = vec2(13,1);
 						self.player.angle = 3 * Math.PI / 2;
-						self.player.setPos(this.pos.clone().add(vec2(76,64)));
+						self.player.setPos(this.pos.clone().add(vec2(76,62)));
 						self.player.anchor.y = 0.5;
 						
 						this.used --;
@@ -252,9 +319,16 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		RJ.inherit(this,Decorations,RJ.NodedElement,obj);
 	}
-	
 	function Player(obj) {
 		obj.size = size(64,128);
+		
+		this.pistol = new RJ.Image({
+			nameless: true,
+			image: obj.pistol,
+			size: size(64,64),
+			pos: vec2(40,16),
+		});
+		this.pistol.visual = false;
 		
 		this.isBusy = function () {
 			return (!this.sleeping && !this.rest && !this.computing);
@@ -272,29 +346,26 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		// Computer
 		this.computing = false;
-		this.compTime = 600;
+		this.compTime = 480;
 		this.compTimer = this.compTime;
 		this.compDir = 1;
 		
 		// Restroom stuff
 		this.rest = false;
-		this.restTime = 240;
+		this.restTime = 600;
 		this.restTimer = this.restTime;
 		
 		// Sleep stuff
 		this.sleeping = false;
-		this.sleepTime = 300;
+		this.sleepTime = 900;
 		this.sleepTimer = this.sleepTime;
 		this.lastTilePos = vecNull();
 		
 		// Utility functions
 		this.stress = -10;
-		this.maxStressed = -100;
 		this.suicide = function (how) {
-			console.log('suicide!!!');
 			this.suicidic = true;
-			
-			this.method = (Math.random() * 2) >> 0;
+			this.method = how;
 		};
 		this.suicidic = false;
 		this.method = null;
@@ -305,11 +376,12 @@ var SV = {}; SV.constructor = function SV() {};
 			this.game.mouseHandler.addHandler(this);
 			this.level = this.game.get('Level');
 			this.pathFinder = new PathFinder(this.level.map);
+			this.addChild(this.pistol);
 		};
 		
 		// Mouse
 		this.mouseHandler = function (state, vec) {
-			if (state == 'click' && this.isBusy()) {
+			if (state == 'click' && this.isBusy() && !this.suicidic) {
 				if (vec.y >= 256 && vec.y <= 448) {
 					vec.sub(vec2(0,256));
 					vec.sub(this.parent.pos);
@@ -352,11 +424,21 @@ var SV = {}; SV.constructor = function SV() {};
 			}
 		};
 		
+		this.winning = false;
 		this.win = function () {
-			
+			this.winning = true;
 		};
 		
+		this.finished = false;
+		this.finish = function () {
+			console.log('FINISH');
+			
+			this.finished = true;
+		};
+		
+		this.dying = false;
 		this.update = function () {
+			// NEAR COMPUTER
 			if (this.computing) {
 				this.compTimer --;
 				
@@ -376,8 +458,11 @@ var SV = {}; SV.constructor = function SV() {};
 				}
 			}
 			
+			// RESTROOM (PEE PEE)
 			if (this.rest) {
 				this.restTimer --;
+				
+				this.stress += 20 / this.restTime
 				
 				if (this.restTimer == 0) {
 					this.rest = false;
@@ -387,6 +472,7 @@ var SV = {}; SV.constructor = function SV() {};
 				}
 			}
 			
+			// SLEEPING
 			if (this.sleeping) {
 				this.sleepTimer --;
 				
@@ -404,53 +490,142 @@ var SV = {}; SV.constructor = function SV() {};
 				}
 			}
 			
-			if (this.timer > 0) {
-				this.timer -= 2;
+			if (this.timer > 0 && !this.suicidic) {
+				this.timer --;
 				
 				if ((this.timer % 600) <= 2) {
-					this.stress --;
+					var tile = this.tilePos();
+					
+					if (tile.x < 21) {
+						this.stress --;
+					}
+					else {
+						this.stress ++;
+					}
 				}
 			}
 			else {
 				this.timer = 0;
-				if (this.stress >= 0) {
-					this.win();
+				if (!this.suicidic && !this.winning) {
+					if (this.stress >= 10) {
+						this.win();
+					}
+					else {
+						this.suicide('fall');
+					}
 				}
-				else {
-					this.suicide();
-				}
+			}
+			
+			if (this.stress <= -99) {
+				this.suicide('fall');
 			}
 			
 			if (this.stress > 100) {
 				this.stress = 100;
 			}
+			else if (this.stress < -100) {
+				this.stress = -100;
+			}
 			
-			if (this.suicidic) {
-				if (!this.tilePos().isEqual(vec2(4,0))) {
-					this.computing = false;
-					this.rest = false;
-					this.sleeping = false;
-					
+			// IF WIN!!!
+			if (this.winning) {
+				if (!this.path && !this.tilePos().isEqual(vec2(4,0))) {
 					this.path = this.pathFinder.findPath(this.tilePos(),vec2(4,0));
 					this.run = true;
 				}
 				else if (this.tilePos().isEqual(vec2(4,0)) && !this.path) {
-					this.game.get('GUI').removeFromParent();
-					this.parent.removeFromParent();
+					this.removeFromParent();
 				}
 			}
 			
-			if (this.stress < this.maxStressed + 1) {
+			// IF SUICIDIC
+			if (this.suicidic) {
+				// GUN WAY
+				if (!this.tilePos().isEqual(vec2(21,1)) && !this.path && this.method == 'gun') {
+					this.computing = false;
+					this.rest = false;
+					this.sleeping = false;
+					
+					this.path = this.pathFinder.findPath(this.tilePos(),vec2(21,1));
+					this.run = true;
+				}
+				else if (this.tilePos().isEqual(vec2(21,1)) && !this.path && this.method == 'gun') {
+					if (this.blood.nodes.length == 0 && (this.ind != 1 && !(this.ind > 5))) {
+						this.blood.generate(this.pos.clone().sub(vec2(36,100)),20);
+					}
+					if (!this.dying) {
+						this.ind = 1;
+						this.dying = true;
+						this.pistol.visual = true;
+					}
+				}
+				
+				// KNIFE WAY
+				if (!this.tilePos().isEqual(vec2(0,1)) && !this.path && this.method == 'knife') {
+					this.computing = false;
+					this.rest = false;
+					this.sleeping = false;
+					
+					this.path = this.pathFinder.findPath(this.tilePos(),vec2(0,1));
+					this.run = true;
+				}
+				else if (this.tilePos().isEqual(vec2(0,1)) && !this.path && this.method == 'knife') {
+					if (!this.dying) {
+						this.ind = 4;
+						this.dying = true;
+					}
+				}
+				
+				// FALL WAY
+				if (!this.tilePos().isEqual(vec2(22,0)) && !this.dying && !this.path && this.method == 'fall') {
+					this.computing = false;
+					this.rest = false;
+					this.sleeping = false;
+					
+					this.path = this.pathFinder.findPath(this.tilePos(),vec2(22,0));
+					this.run = true;
+				}
+				else if (this.tilePos().isEqual(vec2(22,0)) && !this.path && this.method == 'fall' && !this.dying) {				
+					this.ind = 4;
+					this.dying = true;
+					this.setPos(vec2(1440,192));
+					
+					// Reordering
+					var decors = this.game.get('Decors');
+					decors.removeFromParent();
+					
+					this.level.removeFromParent();
+					this.parent.addChild(this.level);
+					
+					this.parent.addChild(decors);
+					this.acc = 1;
+				}
+				else if(this.acc) {
+					var pos = this.pos.clone().add(vec2(0,1).scalar(this.acc));
+					this.setPos(pos);
+					
+					this.acc += 0.1;
+					
+					if (this.pos.y > 384 && !this.finished) {
+						this.finish();
+						this.acc = undefined;
+						this.removeFromParent();
+					}
+				}
+			}
+			
+			if (this.stress < this.maxStressed + 10 && !this.suicidic) {
 				this.suicide();
 			}
 			
+			// GOING SOMEWHERE
 			if (this.path) {
 				var destPos = {x:32+this.path[this.index].x*64,y:32+this.path[this.index].y*64};
 				destPos.y += 256;
 				
-				if (this.pos.distance(destPos) > 2) {
+				if (this.pos.distance(destPos) > 4) {
 					var angle = this.pos.angleT(destPos)-Math.PI;
-					var vel = RJ.Vector.angleToVec(angle).scalar(2);
+					var vel = RJ.Vector.angleToVec(angle).scalar(4);
 					
 					this.setPos(this.pos.clone().add(vel));
 				}
@@ -465,10 +640,11 @@ var SV = {}; SV.constructor = function SV() {};
 				}
 			}
 			
-			if (this.run) {
+			// Time
+			if (this.run || this.dying) {
 				this.time ++;
 			}
-			else {
+			else if (!this.run) {
 				if (this.ind == 1) {
 					this.time ++;
 				}
@@ -477,7 +653,8 @@ var SV = {}; SV.constructor = function SV() {};
 				}
 			}
 			
-			if (this.time > this.dur && this.isBusy()) {
+			// ANIMATION
+			if (this.time > this.dur && this.isBusy() ) {
 				if (this.run) {
 					if (this.sin == 0) {
 						this.ind = 3;
@@ -487,8 +664,31 @@ var SV = {}; SV.constructor = function SV() {};
 						this.ind = 2;
 						this.sin --;
 					}
+				} // GUN
+				else if (this.dying && this.method == 'gun') {
+					if (this.ind < 6) {
+						this.ind = 6;
+					}
+					else if (this.ind < 8) {
+						this.ind ++;
+						this.angle += Math.PI/4;
+					}
+					else if (!this.finished) {
+						this.finish();
+					}
+				} // KNIFE
+				else if (this.dying && this.method == 'knife') {
+					if (this.ind < 9) {
+						this.ind = 9;
+					}
+					else if (this.ind < 11) {
+						this.ind ++;
+					}
+					else if (!this.finished) {
+						this.finish();
+					}
 				}
-				else {
+				else if (!this.run && !this.dying) {
 					if (this.sin == 0) {
 						this.ind = 0;
 						this.sin ++;
@@ -525,7 +725,6 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		RJ.inherit(this,Player,RJ.GameObject,obj);
 	}
-	
 	function Level(obj) {
 		obj.crop = null;
 		obj.size = size(640,480);
@@ -593,7 +792,6 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		RJ.inherit(this,Level,RJ.Image,obj);
 	}
-	
 	function Timebar(obj) {
 		this.player = null;
 		this.onEnter = function () {
@@ -611,7 +809,6 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		RJ.inherit(this,Timebar,RJ.Image,obj);
 	}
-	
 	function Stressbar(obj) {
 		this.player = null;
 		this.onEnter = function () {
@@ -624,7 +821,7 @@ var SV = {}; SV.constructor = function SV() {};
 			var side = this.player.stress / 100;
 			
 			if (side >= 0) {
-				ctx.drawImage(this.image,32,4,10*side,4,44 - 40 * side,4,40*side,16);
+				ctx.drawImage(this.image,42-10 * side,4,10*side,4,44 - 40 * side,4,40*side,16);
 			}
 			else {
 				ctx.drawImage(this.image,41,4,11*Math.abs(side),4,40,4,44*Math.abs(side),16);
@@ -635,7 +832,6 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		RJ.inherit(this,Stressbar,RJ.Image,obj);
 	}
-	
 	function PathFinder(map) {
 		this.map = [];
 		
@@ -760,7 +956,6 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		this.init();
 	};
-	
 	function Sky(obj) {
 		this.stars = [];
 		this.image = RJ.argDef(obj.image,null);
@@ -805,6 +1000,8 @@ var SV = {}; SV.constructor = function SV() {};
 		RJ.inherit(this,Sky,RJ.GameObject,obj);
 	}
 	
+	// Globalization
+	SV.Blood = Blood;
 	SV.Decorations = Decorations;
 	SV.Player = Player;
 	SV.Level = Level;

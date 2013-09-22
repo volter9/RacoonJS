@@ -20,6 +20,8 @@
 				decor.src = './img/decor.png';
 				var sky = new Image();
 				sky.src = './img/sky.png';
+				var pistol = new Image();
+				pistol.src = './img/pistol.png';
 				
 				var Game = new RJ.Game();
 				var winSize = null;
@@ -80,12 +82,21 @@
 							pos: vec2(288,354),
 							anchor: vec2(0.5,1),
 							image: plar,
+							pistol: pistol,
 						});
 						decors.player = player;
+						
+						var blood = new SV.Blood({
+							name: "Blood",
+							pos: vecNull(),
+							size: size(0,0),
+						});
+						player.blood = blood;
 						
 						this.addChild(skie);
 						this.addChild(level);
 						this.addChild(decors);
+						this.addChild(blood);
 						this.addChild(player);
 					},
 				});
@@ -93,7 +104,7 @@
 				Game.addChild(GameScene);
 				Game.addChild(GUI);
 				//Game.turnOnDebug();
-				Game.showFPS();
+				//Game.showFPS();
 			})();
 		</script>
 	</body>
