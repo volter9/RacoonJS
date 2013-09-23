@@ -5,6 +5,22 @@
 		<meta charset="UTF-8" />
 		<script src="stressville.js"></script>
 		<script src="racoon.js"></script>
+		<style>
+			@font-face {
+				font-family: '5x5_pixel';
+				src: url('5x5_pixel.ttf');
+			}
+			
+			canvas {
+				image-rendering: optimizeSpeed;             // Older versions of FF
+				image-rendering: -moz-crisp-edges;          // FF 6.0+
+				image-rendering: -webkit-optimize-contrast; // Webkit
+															//  (Safari now, Chrome soon)
+				image-rendering: -o-crisp-edges;            // OS X & Windows Opera (12.02+)
+				image-rendering: optimize-contrast;         // Possible future browsers.
+				-ms-interpolation-mode: nearest-neighbor;
+			}
+		</style>
 	</head>
 	<body>
 		<canvas id="canvas"></canvas>
@@ -101,8 +117,77 @@
 					},
 				});
 				
-				Game.addChild(GameScene);
-				Game.addChild(GUI);
+				var MainMenu = new RJ.Scene({
+					name: "MenuScene",
+					enter: function () {
+						var White = new RJ.Rectangle({
+							name: "Rectangle",
+							pos:vec2(100,240),
+							anchor: vec2(0.5,0.5),
+							size: size(150,150),
+							fillColor: "#fff",
+						});
+						var AnimatingGuy = new RJ.Image({
+							name: "Guy",
+							image: plar,
+							anchor: vec2(0.5,0.5),
+							crop: new RJ.Rect(0,0,14,32),
+							pos:vec2(100,240),
+							size: size(56,128),
+							update: function () {
+								this.time ++;
+								if (this.time > 30) {
+									if (!this.ind) {
+										this.ind = 1;
+									}
+									else {
+										this.ind ++;
+										
+										if (this.ind > 11) {
+											this.ind = 0;
+										}
+									}
+									
+									this.cropRect.x = 14 * this.ind;
+									
+									this.time = 0;
+								}
+							}
+						});
+						AnimatingGuy.time = 0;
+						
+						var StartButton = new RJ.Text({
+							name: "StartButton",
+							text: "START",
+							font: "Verdana",
+							fontSize: 48,
+							fillColor: "#fff",
+							anchor: vec2(0.5,0.5),
+							pos:size2vec(winSize).div(2),
+						});
+						this.button = StartButton;
+						
+						this.addChild(StartButton);
+						this.addChild(White);
+						this.addChild(AnimatingGuy);
+						this.game.mouseHandler.addHandler(this);
+					},
+					exit: function () {
+						this.game.mouseHandler.removeHandler(this);
+					},
+					mouseHandler: function (state, vec) {
+						if (state == "click" && this.button.rect.containVec(vec)) {
+							this.removeFromParent();
+							this.game.addChild(GameScene);
+							this.game.addChild(GUI);
+						}
+					},
+				});
+				
+				GameScene.mainMenu = MainMenu;
+				GameScene.gui = GUI;
+				Game.addChild(MainMenu);
+				//Game.addChild(GUI);
 				//Game.turnOnDebug();
 				//Game.showFPS();
 			})();

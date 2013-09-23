@@ -9,6 +9,7 @@ var SV = {}; SV.constructor = function SV() {};
 					pos: pos.clone().add(vec2(0,25 - Math.random() * 50)),
 					size: 2 + (Math.random() * 6) >> 0,
 					alpha: 0.8 + Math.random() * 0.2,
+					speed: Math.random() * 0.1,
 				});
 			}
 		}
@@ -18,7 +19,8 @@ var SV = {}; SV.constructor = function SV() {};
 		};
 		
 		this.nodeUpdate = function (node) {
-			node.alpha -= 0.01;
+			node.alpha -= 0.0025;
+			node.pos.y += node.speed;
 			
 			if (node.alpha < 0.05) {
 				this.delete(node.index);
@@ -429,9 +431,13 @@ var SV = {}; SV.constructor = function SV() {};
 			this.winning = true;
 		};
 		
+		var self = this;
 		this.finished = false;
-		this.finish = function () {
-			console.log('FINISH');
+		this.finish = function () {	
+			this.game.addChild(this.parent.mainMenu);
+			
+			this.parent.gui.removeFromParent();
+			this.parent.removeFromParent();
 			
 			this.finished = true;
 		};
@@ -625,7 +631,7 @@ var SV = {}; SV.constructor = function SV() {};
 				
 				if (this.pos.distance(destPos) > 4) {
 					var angle = this.pos.angleT(destPos)-Math.PI;
-					var vel = RJ.Vector.angleToVec(angle).scalar(4);
+					var vel = RJ.Vector.angleToVec(angle).scalar(2);
 					
 					this.setPos(this.pos.clone().add(vel));
 				}
