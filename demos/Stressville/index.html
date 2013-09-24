@@ -120,13 +120,47 @@
 				var MainMenu = new RJ.Scene({
 					name: "MenuScene",
 					enter: function () {
-						var White = new RJ.Rectangle({
+						var Logo = new RJ.Image({
+							name: "logo",
+							image: gui,
+							size: size(172,32),
+							crop: new RJ.Rect(0,16,43,8),
+							pos:vec2(320,50),
+							anchor: vec2(0.5,0.5),
+							enter: function () {
+								var text = new RJ.Text({
+									name: "Texter",
+									text: "VILLE",
+									font: "Verdana",
+									fontSize: 16,
+									fillColor: "#fff",
+									anchor: vec2(0.5,0.5),
+									pos:vec2(86,40),
+								});
+								
+								this.addChild(text);
+							}
+						});
+						
+						var White = new RJ.GameObject ({
 							name: "Rectangle",
 							pos:vec2(100,240),
 							anchor: vec2(0.5,0.5),
-							size: size(150,150),
-							fillColor: "#fff",
+							size: size(160,160),
+							fillColor: "#000",
+							lineWidth: 4,
+							render: function (ctx) {
+								ctx.drawImage(this.image,40,42,40,40,0,0,160,160);
+								ctx.strokeRect(0,0,this.rect.w,this.rect.h);
+								
+								ctx.drawImage(this.image,100,42,40,40,440,0,160,160);
+								ctx.drawImage(this.decor,128,48,16,32,488,-8,64,128);
+								ctx.strokeRect(440,0,this.rect.w,this.rect.h);
+							}
 						});
+						White.image = img;
+						White.decor = decor;
+						
 						var AnimatingGuy = new RJ.Image({
 							name: "Guy",
 							image: plar,
@@ -165,10 +199,24 @@
 							anchor: vec2(0.5,0.5),
 							pos:size2vec(winSize).div(2),
 						});
+						
+						var Text = new RJ.Text({
+							name: "Text",
+							text: "Your mission is to relax this stressed dude.\nHe has high chance of suicide. Don't let him find arms.",
+							font: "Verdana",
+							align: "center",
+							fontSize: 16,
+							fillColor: "#fff",
+							anchor: vec2(0.5,0.5),
+							pos:size2vec(winSize).div(2).add(vec2(0,160)),
+						});
+						
 						this.button = StartButton;
 						
 						this.addChild(StartButton);
+						this.addChild(Text);
 						this.addChild(White);
+						this.addChild(Logo);
 						this.addChild(AnimatingGuy);
 						this.game.mouseHandler.addHandler(this);
 					},

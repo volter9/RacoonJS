@@ -428,16 +428,20 @@ var SV = {}; SV.constructor = function SV() {};
 		
 		this.winning = false;
 		this.win = function () {
+			this.finish();
+			
 			this.winning = true;
 		};
 		
 		var self = this;
 		this.finished = false;
 		this.finish = function () {	
-			this.game.addChild(this.parent.mainMenu);
+			setTimeout(function () {
+				self.game.addChild(self.parent.mainMenu);
 			
-			this.parent.gui.removeFromParent();
-			this.parent.removeFromParent();
+				self.parent.gui.removeFromParent();
+				self.parent.removeFromParent();
+			},1000);
 			
 			this.finished = true;
 		};
