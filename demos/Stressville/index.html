@@ -233,6 +233,16 @@
 						}
 					},
 				});
+				MainMenu.touchHandler = function (state, touches) {
+					var vec = touches[0];
+					console.log(vec);
+					
+					if (state == "down" && this.button.rect.containVec(vec)) {
+						this.removeFromParent();
+						this.game.addChild(GameScene);
+						this.game.addChild(GUI);
+					}
+				};
 				
 				GameScene.mainMenu = MainMenu;
 				GameScene.gui = GUI;

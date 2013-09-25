@@ -90,6 +90,7 @@ var SV = {}; SV.constructor = function SV() {};
 		var self = this;
 		this.onExit = function () {
 			this.game.mouseHandler.removeHandler(this);
+			this.game.touchHandler.removeHandler(this);
 		};
 		this.onEnter = function () {
 			// Restroom
@@ -329,6 +330,7 @@ var SV = {}; SV.constructor = function SV() {};
 			});
 			
 			this.game.mouseHandler.addHandler(this);
+			this.game.touchHandler.addHandler(this);
 		};
 		
 		this.nodeRender = function (node,ctx) {
