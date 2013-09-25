@@ -219,9 +219,11 @@
 						this.addChild(Logo);
 						this.addChild(AnimatingGuy);
 						this.game.mouseHandler.addHandler(this);
+						this.game.touchHandler.addHandler(this);
 					},
 					exit: function () {
 						this.game.mouseHandler.removeHandler(this);
+						this.game.touchHandler.removeHandler(this);
 					},
 					mouseHandler: function (state, vec) {
 						if (state == "click" && this.button.rect.containVec(vec)) {

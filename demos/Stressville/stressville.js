@@ -68,6 +68,25 @@ var SV = {}; SV.constructor = function SV() {};
 			}
 		};
 		
+		this.touchHandler = function (state,touches) {
+			var vec = touches[0];
+			
+			if (state == 'down') {
+				vec.sub(this.parent.pos);
+				for (var i = 0; i < this.nodes.length; i++) {
+					var node = this.nodes[i];
+					
+					if (vec.x > node.pos.x && vec.y > node.pos.y &&
+						vec.x < node.pos.x + node.size.w * 4 && vec.y < node.pos.y + node.size.h * 4) {
+						if (this.player.pos.distance(node.pos.clone().add(vec2(node.size.w*2,node.size.h*2))) < 300 * 300 &&
+							this.player.isBusy() && !this.player.path && !this.player.suicidic) {
+							node.call();
+						}
+					}
+				}
+			}
+		};
+		
 		var self = this;
 		this.onExit = function () {
 			this.game.mouseHandler.removeHandler(this);
@@ -376,9 +395,15 @@ var SV = {}; SV.constructor = function SV() {};
 		this.onEnter = function () {
 			this.index = 0;
 			this.game.mouseHandler.addHandler(this);
+			this.game.touchHandler.addHandler(this);
 			this.level = this.game.get('Level');
 			this.pathFinder = new PathFinder(this.level.map);
 			this.addChild(this.pistol);
+		};
+		
+		this.onExit = function () {
+			this.game.mouseHandler.removeHandler(this);
+			this.game.touchHandler.removeHandler(this);
 		};
 		
 		// Mouse
@@ -412,6 +437,39 @@ var SV = {}; SV.constructor = function SV() {};
 				}
 			}
 		};
+		
+		this.touchHandler = function (state,touches) {
+			var vec = touches[0];
+			
+			if (state == 'down' && this.isBusy() && !this.suicidic) {
+				if (vec.y >= 256 && vec.y <= 448) {
+					vec.sub(vec2(0,256));
+					vec.sub(this.parent.pos);
+					vec.div(64);
+					
+					vec.x = vec.x << 0;
+					vec.y = vec.y << 0;
+					
+					if (vec.x < 0) {
+						vec.x = 0;
+					}
+					else if(vec.x > 22) {
+						vec.x = 22;
+					}
+					
+					var playerTilePos = this.pos.clone().sub(vec2(0,256)).div(64);
+					playerTilePos.x = playerTilePos.x << 0;
+					playerTilePos.y = playerTilePos.y << 0;
+					
+					if (this.path == null && !playerTilePos.isEqual(vec)) {						
+						this.path = this.pathFinder.findPath(playerTilePos,vec);
+						if (this.path != undefined) {
+							this.run = true;
+						}
+					}
+				}
+			}
+		}
 		
 		this.path = null;
 		this.org = vec2(0,256);
